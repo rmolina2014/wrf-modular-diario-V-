@@ -1,0 +1,18 @@
+[Unit]
+Description=Pronóstico diario WRF con asimilación de observaciones (San Juan)
+Documentation=https://github.com/rmolina2014/wrf-modular-diario-V
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=roberto
+WorkingDirectory=/home/roberto/wrf-modular-diario
+ExecStart=/home/roberto/wrf-modular-diario/run_diario.sh --fecha %i
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=21600
+
+# Etapa 2 de automatización: descomentar cuando se valide el modo manual
+# y ajustar la hora para que el ciclo GFS 12Z esté completo (≈17:30-18:30 UTC).
+# Calendar=*-*-* 19:30:00

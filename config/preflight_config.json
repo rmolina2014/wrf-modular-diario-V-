@@ -1,0 +1,24 @@
+{
+  "formato_obs": {
+    "pares_formato105": 9,
+    "pares_formato104": 6,
+    "plataforma_esperada": "SYNOP",
+    "timestamp_segundos_permitidos": [0],
+    "intervalo_ts_min": 5
+  },
+  "cobertura_temporal": {
+    "n_tercios": 3,
+    "obs_min_por_tercio": 5
+  },
+  "namelist": {
+    "rango_coef_nudge": [0.0001, 0.0005],
+    "max_obs_min": 1
+  },
+  "gfs": {
+    "viento_extremo_ms": 80.0,
+    "run_hours_max": 12
+  },
+  "recursos": {
+    "espacio_min_gb": 20.0
+  }
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Disparador diario del pronóstico WRF (San Juan)
+RefuseManualStart=no
+
+[Timer]
+# Etapa 2 de automatización: ciclo GFS 12Z completo ≈17:30-18:30 UTC.
+# 19:30 UTC = 16:30 ART (America/Argentina/San_Juan, UTC-3).
+OnCalendar=*-*-* 19:30:00
+Persistent=true
+Unit=wrf-diario.service@%Y-%m-%d.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Entornos y secretos
+.env
+.venv
+venv/
+VENV/
+
+# Logs
+logs/
+*.log
+
+# SO
+.DS_Store
+Thumbs.db
+
+# WRF / intermediarios grandes
+*.nc
+wrfout*
+rsl.*
+met_em.*
+geo_em*
+FILE:*
+GRIBFILE.*
+
+# Datos descargados (obs + GFS)
+data/
+wps_sanjuan/gfs_data/
+wps_sanjuan/FILE:*
+wps_sanjuan/GRIBFILE.*
+
+# Productos de salida (se generan en cada corrida diaria)
+outputs/

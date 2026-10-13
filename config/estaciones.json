@@ -1,0 +1,11 @@
+{
+    "INTA_POCITO": {"lat": -31.6500, "lon": -68.5833, "elev": 615, "mac": "30:83:98:A7:43:1B", "rol": "asimilacion"},
+    "ULLUM_EMBALSE": {"lat": -31.4667, "lon": -68.6667, "elev": 768, "mac": "30:83:98:A5:CB:17", "rol": "evaluacion"},
+    "ECOHUMUS": {"lat": -31.6500, "lon": -68.3000, "elev": 600, "mac": "BC:FF:4D:F7:DF:DA", "rol": "asimilacion"},
+    "PUNTA_NEGRA": {"lat": -31.5192, "lon": -68.8178, "elev": 800, "mac": "30:83:98:A6:BB:72", "rol": "asimilacion"},
+    "INTA_SANMARTIN": {"lat": -31.5000, "lon": -68.2500, "elev": 600, "mac": "30:83:98:A6:B3:AA", "rol": "evaluacion"},
+    "VALLE_FERTIL": {"lat": -30.6335, "lon": -67.4682, "elev": 900, "mac": "30:83:98:A7:1E:10", "rol": "asimilacion"},
+    "LOS_PIONEROS": {"lat": -32.1234, "lon": -67.1234, "elev": 890, "mac": "30:83:98:A7:09:CD", "rol": "asimilacion"},
+    "CUESTA_Viento": {"lat": -30.1833, "lon": -69.0667, "elev": 1530, "mac": "30:83:98:A5:52:40", "rol": "asimilacion"},
+    "CARACOLES": {"lat": -31.5194, "lon": -68.9851, "elev": 942, "mac": "30:83:98:A7:47:39", "rol": "evaluacion"}
+}

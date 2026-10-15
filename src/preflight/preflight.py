@@ -139,6 +139,25 @@ def _parsear_obsdomain(path: Path) -> List[Dict[str, Any]]:
 
 # === Chequeos de la Sección 2.2 ===
 
+def _check_timezone(informe: InformePreflight) -> None:
+    """Informa la zona horaria del host.
+
+    Las observaciones se sellan y comparan en UTC de forma explícita (ver
+    ecowitt_client/pipeline_diario), por lo que un host fuera de UTC no rompe el
+    flujo, pero conviene operarlo en UTC para que logs, fechas y agendamiento
+    coincidan con las fechas del ciclo GFS.
+    """
+    ahora = datetime.now().astimezone()
+    offset = ahora.utcoffset() or timedelta(0)
+    offset_h = offset.total_seconds() / 3600.0
+    detalle = f"TZ del host: {ahora.tzname()} (UTC{offset_h:+.0f})"
+    if abs(offset_h) < 1e-6:
+        informe.agregar("2.2.0", "Zona horaria del host", Estado.OK, detalle + " = UTC")
+    else:
+        informe.agregar("2.2.0", "Zona horaria del host", Estado.ADVERTENCIA,
+                        detalle + "; se recomienda operar el host en UTC (TZ=UTC)")
+
+
 class ChequeosObservaciones:
     """Chequeos 2.2.x sobre el JSON crudo y el OBS_DOMAIN101 generado."""
 
@@ -371,6 +390,7 @@ def correr_preflight_observaciones(
     informe = InformePreflight(caso=caso or str(Path(obsdomain).parent.name))
     chequeos = ChequeosObservaciones(obs_json, obsdomain, namelist, start_dt, _cargar_config(config_path))
     runner = PreflightRunner(config_path=config_path)
+    runner.registrar(_check_timezone)
     runner.registrar(chequeos.check_2221_archivo_json)
     runner.registrar(chequeos.check_2222_formato105)
     runner.registrar(chequeos.check_2223_plataforma)

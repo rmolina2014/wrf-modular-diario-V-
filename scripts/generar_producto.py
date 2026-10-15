@@ -114,18 +114,18 @@ def _cargar_obs(obs_json, estaciones_json, valid_time, ventana_min=30):
     if not obs_json or not valid_time:
         return []
     import json as _json
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     with open(obs_json, "r", encoding="utf-8") as f:
         obs = _json.load(f)
     with open(estaciones_json, "r", encoding="utf-8") as f:
         meta = _json.load(f)
 
-    vt = datetime.strptime(valid_time, "%Y-%m-%d_%H:%M:%S")
+    vt = datetime.strptime(valid_time, "%Y-%m-%d_%H:%M:%S").replace(tzinfo=timezone.utc)
     marcas = {}
     for r in obs:
         try:
-            ts = datetime.fromtimestamp(int(r["time_unix"]))
+            ts = datetime.fromtimestamp(int(r["time_unix"]), tz=timezone.utc)
         except (KeyError, TypeError, ValueError):
             continue
         if abs((ts - vt).total_seconds()) <= ventana_min * 60:

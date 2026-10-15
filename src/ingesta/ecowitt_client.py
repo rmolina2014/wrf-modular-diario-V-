@@ -4,7 +4,7 @@ import os
 import json
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 import requests
@@ -158,7 +158,7 @@ class EcowittIngestor:
             raw_data = raw_data[0]
 
         timestamp = int(data.get("time", time.time()))
-        dt = datetime.fromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
         return {
             "estacion": nombre_estacion,
@@ -354,7 +354,7 @@ class EcowittIngestor:
 
             for ts in all_ts:
                 try:
-                    fecha_hora = datetime.fromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M:%S")
+                    fecha_hora = datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 except (ValueError, TypeError, OverflowError):
                     continue
                 filas.append({

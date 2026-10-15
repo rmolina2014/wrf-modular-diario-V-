@@ -27,26 +27,32 @@ if [ -f .env ]; then
     set +a
 fi
 
+# Las observaciones y las fechas del ciclo se manejan en UTC (ver pipeline_diario.py).
+# Se respeta un TZ ya definido (p. ej. en .env); si no, se fija UTC.
+export TZ="${TZ:-UTC}"
+
 FECHA=""
+ARGS=()
 while [ $# -gt 0 ]; do
     case "$1" in
-        --fecha) FECHA="$2"; shift 2 ;;
-        *) break ;;
+        --fecha)
+            if [ $# -lt 2 ]; then
+                echo "Falta el valor de --fecha (YYYY-MM-DD)" >&2
+                exit 2
+            fi
+            FECHA="$2"; shift 2 ;;
+        *) ARGS+=("$1"); shift ;;
     esac
 done
 
-# Recolectar todos los argumentos para pasarlos a pipeline_diario.py
-ARGS=("$@")
 if [ -z "$FECHA" ]; then
     FECHA="$(date -u +%Y-%m-%d)"
-    ARGS+=("--fecha" "$FECHA")
-else
-    ARGS+=("--fecha" "$FECHA")
 fi
+ARGS+=("--fecha" "$FECHA")
 
 LOG_DIR="${ROOT}/logs"
 mkdir -p "$LOG_DIR"
-LOG="$(date -u +$LOG_DIR/run_${FECHA}_%Y%m%d_%H%M%S.log)"
+LOG="$(date -u +"$LOG_DIR/run_${FECHA}_%Y%m%d_%H%M%S.log")"
 
 echo "=== Pronóstico diario WRF ==="
 echo "Fecha: ${FECHA} | args: ${ARGS[*]}"

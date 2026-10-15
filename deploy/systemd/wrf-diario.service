@@ -8,7 +8,9 @@ Wants=network-online.target
 Type=oneshot
 User=roberto
 WorkingDirectory=/home/roberto/wrf-modular-diario
-ExecStart=/home/roberto/wrf-modular-diario/run_diario.sh --fecha %i
+# La fecha del ciclo la resuelve run_diario.sh (date -u: hoy UTC). Para una corrida
+# manual de otra fecha: run_diario.sh --fecha YYYY-MM-DD
+ExecStart=/home/roberto/wrf-modular-diario/run_diario.sh
 StandardOutput=journal
 StandardError=journal
 TimeoutStartSec=21600

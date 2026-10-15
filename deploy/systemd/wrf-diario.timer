@@ -7,7 +7,7 @@ RefuseManualStart=no
 # 19:30 UTC = 16:30 ART (America/Argentina/San_Juan, UTC-3).
 OnCalendar=*-*-* 19:30:00
 Persistent=true
-Unit=wrf-diario.service@%Y-%m-%d.service
+Unit=wrf-diario.service
 
 [Install]
 WantedBy=timers.target

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Arquitectura del pipeline WRF diario",
+    "output": "arquitectura.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "camino-obs", "label": "Camino de observaciones", "focus": ["ecowitt", "ingesta", "qc", "obsdomain", "preflight"], "note": "Del histórico EcoWitt al OBS_DOMAIN101 validado." },
+      { "id": "camino-gfs", "label": "Camino GFS a WPS", "focus": ["nomads", "gfs", "wps", "real"], "note": "Descarga del ciclo GFS y generación de condiciones iniciales." },
+      { "id": "ejecucion", "label": "Ejecución del modelo", "focus": ["preflight", "real", "wrf", "salidas"], "note": "Gate bloqueante, corrida nudged y salidas del día." }
+    ]
+  },
+  "components": [
+    { "id": "ecowitt", "type": "external", "label": "EcoWitt API", "sublabel": "Estaciones San Juan", "tag": "REST v3", "pos": [40, 60], "size": [150, 64] },
+    { "id": "ingesta", "type": "backend", "label": "Ingesta obs", "sublabel": "Histórico EcoWitt", "pos": [300, 60], "size": [150, 64] },
+    { "id": "qc", "type": "backend", "label": "Control de calidad", "sublabel": "Reglas físicas + hold-out", "pos": [560, 60], "size": [170, 64] },
+    { "id": "obsdomain", "type": "backend", "label": "OBS_DOMAIN101", "sublabel": "obsnud + Little_R", "pos": [840, 60], "size": [180, 64] },
+
+    { "id": "nomads", "type": "external", "label": "NOMADS / AWS", "sublabel": "GFS 0.25°", "pos": [40, 300], "size": [150, 64] },
+    { "id": "gfs", "type": "cloud", "label": "Descarga GFS", "sublabel": "f000-f036 (13 ficheros)", "pos": [300, 300], "size": [150, 64] },
+    { "id": "wps", "type": "backend", "label": "WPS", "sublabel": "ungrib + metgrid", "pos": [560, 300], "size": [170, 64] },
+    { "id": "real", "type": "backend", "label": "real.exe", "sublabel": "Condiciones iniciales", "pos": [840, 300], "size": [180, 64] },
+
+    { "id": "preflight", "type": "security", "label": "Preflight", "sublabel": "Chequeos bloqueantes", "pos": [840, 180], "size": [180, 64] },
+    { "id": "wrf", "type": "backend", "label": "wrf.exe (nudged)", "sublabel": "FDDA obs_nudge_opt=1", "pos": [1120, 300], "size": [170, 72] },
+    { "id": "salidas", "type": "frontend", "label": "Producto + informe", "sublabel": "PNG - HTML - estado.json", "pos": [1120, 500], "size": [170, 72] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Host de cálculo - WRF/WPS 4.5", "wraps": ["wps", "real", "wrf"] }
+  ],
+  "connections": [
+    { "id": "ecowitt-ingesta", "from": "ecowitt", "to": "ingesta", "label": "REST histórico" },
+    { "id": "ingesta-qc", "from": "ingesta", "to": "qc", "label": "CSV del día" },
+    { "id": "qc-obsdomain", "from": "qc", "to": "obsdomain", "label": "registros válidos" },
+
+    { "id": "nomads-gfs", "from": "nomads", "to": "gfs", "label": "GRIB 0.25" },
+    { "id": "gfs-wps", "from": "gfs", "to": "wps", "label": "f000-f036" },
+    { "id": "wps-real", "from": "wps", "to": "real", "label": "met_em" },
+
+    { "id": "obsdomain-preflight", "from": "obsdomain", "to": "preflight", "label": "OBS_DOMAIN101", "labelAt": [930, 152] },
+    { "id": "preflight-real", "from": "preflight", "to": "real", "label": "bloqueante", "fromSide": "bottom", "toSide": "top", "labelAt": [930, 272] },
+    { "id": "real-wrf", "from": "real", "to": "wrf", "label": "wrfinput" },
+    { "id": "obsdomain-wrf", "from": "obsdomain", "to": "wrf", "label": "nudging FDDA", "variant": "dashed", "fromSide": "right", "toSide": "top", "via": [[1205, 92]] },
+    { "id": "wrf-salidas", "from": "wrf", "to": "salidas", "label": "wrfout", "labelAt": [1205, 436] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Ingesta y asimilación", "items": ["Histórico EcoWitt del día (9 estaciones)", "QC físico + hold-out rol=evaluacion", "OBS_DOMAIN101 (FORMAT 105) + Little_R"] },
+    { "dot": "violet", "title": "Modelo WRF", "items": ["GFS 0.25 ciclo 00/12Z, f000-f036 (13 ficheros)", "WPS: ungrib + metgrid (geogrid reutilizado)", "real.exe + wrf.exe con obs_nudge_opt=1"] },
+    { "dot": "amber", "title": "Operación", "items": ["Preflight bloqueante antes de wrf.exe", "estado.json + preflight_diario.json por corrida", "Bloqueo de concurrencia sobre el run dir WRF"] }
+  ]
+}

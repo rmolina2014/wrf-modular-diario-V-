@@ -16,6 +16,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -44,7 +45,13 @@ def main() -> int:
     ap.add_argument("--estaciones-json", default=Path("config/estaciones.json"), type=Path)
     ap.add_argument("--output", required=True, type=Path,
                     help="directorio de salida de los CSV")
+    ap.add_argument("--t0", default=None,
+                    help="fin de la asimilación, UTC (YYYY-MM-DD_HH:MM:SS). Si se indica, agrega "
+                         "las columnas lead_h y fase (asimilacion / pronostico_libre).")
+    ap.add_argument("--huso-local", type=float, default=-3.0,
+                    help="huso (horas respecto de UTC) de la columna fecha_hora_local (default: -3)")
     args = ap.parse_args()
+    t0 = datetime.strptime(args.t0, "%Y-%m-%d_%H:%M:%S") if args.t0 else None
 
     wrfout = sorted(p for p in args.nudged_dir.glob("wrfout_d01_*")
                     if re.search(r"\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}$", p.name))
@@ -62,6 +69,13 @@ def main() -> int:
 
     for archivo in wrfout:
         marca = archivo.name.removeprefix("wrfout_d01_")
+        dt = datetime.strptime(marca, "%Y-%m-%d_%H:%M:%S")
+        tiempo = {"fecha_hora_utc": marca,
+                  "fecha_hora_local": (dt + timedelta(hours=args.huso_local)).strftime("%Y-%m-%d_%H:%M:%S")}
+        if t0 is not None:
+            lead = (dt - t0).total_seconds() / 3600.0
+            tiempo["lead_h"] = round(lead, 1)
+            tiempo["fase"] = "asimilacion" if lead <= 0 else "pronostico_libre"
         with xr.open_dataset(archivo) as ds:
             t2 = ds["T2"].values
             q2 = ds["Q2"].values
@@ -79,7 +93,7 @@ def main() -> int:
             spd, dirg = viento(u10, v10)
 
             filas_dom.append({
-                "fecha_hora_utc": marca,
+                **tiempo,
                 "t2_min_c": round(float(np.nanmin(t2) - 273.15), 2),
                 "t2_max_c": round(float(np.nanmax(t2) - 273.15), 2),
                 "t2_media_c": round(float(np.nanmean(t2) - 273.15), 2),
@@ -94,13 +108,11 @@ def main() -> int:
             })
 
             for est in estaciones:
-                if est.get("rol") == "evaluacion" or est.get("rol") == "evaluación":
-                    continue
                 dist2 = ((lat - float(est["lat"])) ** 2
                          + (lon - float(est["lon"])) ** 2)
                 j, i = np.unravel_index(int(np.nanargmin(dist2)), dist2.shape)
                 filas_est.append({
-                    "fecha_hora_utc": marca,
+                    **tiempo,
                     "estacion": est.get("nombre", est.get("estacion", "?")),
                     "lat": est["lat"],
                     "lon": est["lon"],

@@ -15,6 +15,7 @@ StandardOutput=journal
 StandardError=journal
 TimeoutStartSec=21600
 
-# Etapa 2 de automatización: descomentar cuando se valide el modo manual
-# y ajustar la hora para que el ciclo GFS 12Z esté completo (≈17:30-18:30 UTC).
+# Etapa 2 de automatización: descomentar cuando se valide el modo manual.
+# La hora debe ser posterior a t0 (18Z con los defaults: ciclo 06Z + 12 h de asimilación)
+# para que las observaciones de la ventana ya estén disponibles.
 # Calendar=*-*-* 19:30:00

@@ -158,8 +158,15 @@ class ObsNudWriter:
         logger.info(f"OBS_DOMAIN101 generado en {dst_path} con {escritas} observaciones (orden cronológico).")
         return dst_path
 
-    def generar_desde_dataframe(self, df: pd.DataFrame, config_estaciones: Optional[Dict[str, Any]] = None, output_path: str = "data/processed/OBS_DOMAIN101") -> Path:
-        """Convierte directamente un DataFrame validado a OBS_DOMAIN101."""
+    def generar_desde_dataframe(self, df: pd.DataFrame, config_estaciones: Optional[Dict[str, Any]] = None,
+                                output_path: str = "data/processed/OBS_DOMAIN101",
+                                usar_roles: bool = False) -> Path:
+        """Convierte directamente un DataFrame validado a OBS_DOMAIN101.
+
+        Por defecto (``usar_roles=False``) se asimilan todas las estaciones del DataFrame.
+        Con ``usar_roles=True`` se aplica el hold-out espacial: las estaciones con
+        rol "evaluacion" en config/estaciones.json no entran al archivo.
+        """
         if config_estaciones is None and self.config_path.exists():
             import json
             with open(self.config_path, "r", encoding="utf-8") as f:
@@ -171,10 +178,9 @@ class ObsNudWriter:
         for _, row in df.iterrows():
             nombre = str(row.get("estacion", "UNKNOWN"))
             meta = config_estaciones.get(nombre, {})
-            # Hold-out espacial: las estaciones con rol "evaluacion" en
-            # config/estaciones.json se reservan para validar generalizacion
-            # y nunca se asimilan (no entran a OBS_DOMAIN101).
-            if meta.get("rol") == "evaluacion":
+            # Hold-out espacial (solo con usar_roles=True): las estaciones con rol
+            # "evaluacion" se reservan para validar y no entran a OBS_DOMAIN101.
+            if usar_roles and meta.get("rol") == "evaluacion":
                 omitidas_holdout += 1
                 continue
             obs_list.append({

@@ -162,12 +162,15 @@ class ChequeosObservaciones:
     """Chequeos 2.2.x sobre el JSON crudo y el OBS_DOMAIN101 generado."""
 
     def __init__(self, obs_json: Path, obsdomain: Path, namelist: Path,
-                 start_dt: Optional[datetime] = None, config: Optional[Dict] = None):
+                 start_dt: Optional[datetime] = None, config: Optional[Dict] = None,
+                 t0: Optional[datetime] = None):
         self.obs_json = Path(obs_json)
         self.obsdomain = Path(obsdomain)
         self.namelist = namelist
         self.start_dt = start_dt
         self.cfg = config or {}
+        # t0 = fin de la asimilación / inicio del pronóstico libre (None = nudging continuo).
+        self.t0 = t0
 
     def _n_registros_json(self) -> int:
         try:
@@ -332,9 +335,13 @@ class ChequeosObservaciones:
             informe.agregar("2.2.6", "Cobertura temporal de las observaciones",
                             Estado.ADVERTENCIA, "Start time no disponible para evaluar rebanadas")
             return
-        run_hours = _leer_namelist_valor(self.namelist, "run_hours") or 12
         inicio = self.start_dt.replace(minute=0, second=0, microsecond=0)
-        fin = inicio + timedelta(hours=run_hours)
+        if self.t0 is not None:
+            # Asimilación + pronóstico libre: solo [start, t0] puede tener observaciones.
+            fin = self.t0
+        else:
+            run_hours = _leer_namelist_valor(self.namelist, "run_hours") or 12
+            fin = inicio + timedelta(hours=run_hours)
         n_tercios = self.cfg.get("cobertura_temporal", {}).get("n_tercios", 3)
         obs_min = self.cfg.get("cobertura_temporal", {}).get("obs_min_por_tercio", 5)
         bordes = []
@@ -360,6 +367,46 @@ class ChequeosObservaciones:
             informe.agregar("2.2.6", "Cobertura temporal de las observaciones",
                             Estado.OK, detalle)
 
+    # 2.2.7
+    def check_2227_separacion_temporal(self, informe: InformePreflight) -> None:
+        """Protocolo asimilación + pronóstico libre.
+
+        Ninguna observación puede quedar fuera de [start, t0] (una posterior a t0 sería
+        asimilar el futuro) y el nudging debe apagarse en t0: fdda_end = minutos start -> t0.
+        """
+        if self.t0 is None or self.start_dt is None:
+            return
+        problemas = []
+        tarde = temprano = 0
+        for r in _parsear_obsdomain(self.obsdomain):
+            try:
+                dt = datetime.strptime(r["timestamp"], "%Y%m%d%H%M%S")
+            except ValueError:
+                continue  # el formato ya lo valida 2.2.4
+            if dt > self.t0:
+                tarde += 1
+            elif dt < self.start_dt:
+                temprano += 1
+        if tarde:
+            problemas.append(f"{tarde} obs posteriores a t0 ({self.t0:%Y-%m-%d %H:%M}Z): se asimilaría el futuro")
+        if temprano:
+            problemas.append(f"{temprano} obs anteriores al inicio del modelo ({self.start_dt:%Y-%m-%d %H:%M}Z)")
+
+        esperado = (self.t0 - self.start_dt).total_seconds() / 60.0
+        fdda_end = _leer_namelist_valor(self.namelist, "fdda_end")
+        if fdda_end is None:
+            problemas.append("no se pudo leer fdda_end del namelist")
+        elif abs(fdda_end - esperado) > 1e-6:
+            problemas.append(f"fdda_end={int(fdda_end)} min != {int(esperado)} min (start -> t0): "
+                             "el nudging seguiría activo en el pronóstico libre")
+
+        desc = "Separación temporal (asimilación / pronóstico libre)"
+        if problemas:
+            informe.agregar("2.2.7", desc, Estado.BLOQUEANTE, "; ".join(problemas))
+        else:
+            informe.agregar("2.2.7", desc, Estado.OK,
+                            f"sin obs fuera de [start, t0]; fdda_end={int(fdda_end)} min = ventana de asimilación")
+
 
 class PreflightRunner:
     """Orquesta los chequeos de secciones activas y devuelve el informe."""
@@ -384,11 +431,16 @@ class PreflightRunner:
 
 def correr_preflight_observaciones(
     obs_json: Path, obsdomain: Path, namelist: Path, start_dt: Optional[datetime] = None,
-    caso: str = "", config_path: Optional[Path] = None,
+    caso: str = "", config_path: Optional[Path] = None, t0: Optional[datetime] = None,
 ) -> InformePreflight:
-    """Ejecuta la Sección 2.2 (observaciones/OBS_DOMAIN101) y devuelve el informe."""
+    """Ejecuta la Sección 2.2 (observaciones/OBS_DOMAIN101) y devuelve el informe.
+
+    Con ``t0`` (fin de la asimilación) se activa el chequeo 2.2.7 de separación temporal y la
+    cobertura 2.2.6 se evalúa sobre [start, t0] en vez de sobre toda la corrida.
+    """
     informe = InformePreflight(caso=caso or str(Path(obsdomain).parent.name))
-    chequeos = ChequeosObservaciones(obs_json, obsdomain, namelist, start_dt, _cargar_config(config_path))
+    chequeos = ChequeosObservaciones(obs_json, obsdomain, namelist, start_dt,
+                                     _cargar_config(config_path), t0=t0)
     runner = PreflightRunner(config_path=config_path)
     runner.registrar(_check_timezone)
     runner.registrar(chequeos.check_2221_archivo_json)
@@ -397,4 +449,6 @@ def correr_preflight_observaciones(
     runner.registrar(chequeos.check_2224_timestamps)
     runner.registrar(chequeos.check_2225_max_obs)
     runner.registrar(chequeos.check_2226_cobertura)
+    if t0 is not None:
+        runner.registrar(chequeos.check_2227_separacion_temporal)
     return runner.correr(informe)

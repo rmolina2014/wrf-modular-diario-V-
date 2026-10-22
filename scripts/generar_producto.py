@@ -110,6 +110,15 @@ def _panel_viento(ax, ds, obs):
     return cf
 
 
+def _etiqueta_tiempo(vt, huso_h):
+    """'2026-10-23_03:00:00' -> '2026-10-23 03:00 UTC (2026-10-23 00:00 hora local)'."""
+    from datetime import datetime, timedelta
+
+    t = datetime.strptime(vt, "%Y-%m-%d_%H:%M:%S")
+    local = t + timedelta(hours=huso_h)
+    return f"{t:%Y-%m-%d %H:%M} UTC ({local:%Y-%m-%d %H:%M} hora local)"
+
+
 def _cargar_obs(obs_json, estaciones_json, valid_time, ventana_min=30):
     if not obs_json or not valid_time:
         return []
@@ -158,6 +167,8 @@ def principal():
     p.add_argument("--output", required=True)
     p.add_argument("--obs-json", default=None)
     p.add_argument("--estaciones-json", default="config/estaciones.json")
+    p.add_argument("--huso-local", type=float, default=-3.0,
+                   help="Huso (horas respecto de UTC) para el rótulo de hora local (default: -3).")
     p.add_argument("--valid-time", action="append", default=None,
                    help="Un tiempo válido (YYYY-MM-DD_HH:MM:SS). Repetible; default: todos los wrfout.")
     args = p.parse_args()
@@ -186,7 +197,8 @@ def principal():
         obs = _cargar_obs(args.obs_json, args.estaciones_json, vt) if args.obs_json else []
         ds = xr.open_dataset(str(wrfout))
         fig, axes = plt.subplots(2, 2, figsize=(13, 10))
-        fig.suptitle(f"WRF San Juan 15 km - {vt}  [{'obs superpuestas' if obs else 'pronóstico'}]",
+        fig.suptitle(f"WRF San Juan 15 km - {_etiqueta_tiempo(vt, args.huso_local)}  "
+                     f"[{'obs superpuestas' if obs else 'pronóstico'}]",
                      fontsize=13, y=0.98)
         cfs = [
             _panel_t2(axes[0, 0], ds, obs),

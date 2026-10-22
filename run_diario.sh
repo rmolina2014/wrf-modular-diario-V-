@@ -3,15 +3,15 @@
 #
 # Carga el entorno del proyecto y ejecuta scripts/pipeline_diario.py registrando
 # el log del día. Pasos:
-#   1) Observaciones EcoWitt del día  -> OBS_DOMAIN101
-#   2) GFS <ciclo>Z (0..36h) -> WPS -> real.exe -> wrf.exe nudged
-#   3) Producto de pronóstico (T2/RH/PSFC/viento) para mañana + informe
+#   1) Observaciones EcoWitt de la ventana de asimilación [inicio, t0] -> OBS_DOMAIN101
+#   2) GFS <ciclo>Z -> WPS -> real.exe -> wrf.exe nudged (asimila hasta t0, libre después)
+#   3) Producto de pronóstico (T2/RH/PSFC/viento) del día local siguiente + informe
 #
 # Uso:
-#   ./run_diario.sh [--fecha YYYY-MM-DD] [--ciclo HH] [--run-hours N] [--dry-run] [opciones de pipeline_diario]
+#   ./run_diario.sh [--fecha YYYY-MM-DD] [--ciclo HH] [--asim-hours N] [--horizon-h N] [--dry-run] [opciones de pipeline_diario]
 #
 # Ejemplos:
-#   ./run_diario.sh                           # hoy 12Z, 36h, con asimilación
+#   ./run_diario.sh                           # hoy: ciclo 06Z, asimila hasta 18Z, pronostica mañana
 #   ./run_diario.sh --dry-run                 # solo disponibilidad obs + GFS
 #   ./run_diario.sh --continue-sin-obs        # pronóstico GFS puro si faltan obs
 

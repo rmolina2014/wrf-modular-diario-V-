@@ -1,0 +1,49 @@
+{
+  "caso": "diario",
+  "fecha": "2026-10-21 17:05:28",
+  "ejecutar_wrf": true,
+  "chequeos": [
+    {
+      "id": "2.2.0",
+      "descripcion": "Zona horaria del host",
+      "estado": "OK",
+      "detalle": "TZ del host: UTC (UTC+0) = UTC"
+    },
+    {
+      "id": "2.2.1",
+      "descripcion": "Existencia del JSON de observaciones",
+      "estado": "OK",
+      "detalle": "1130 registros"
+    },
+    {
+      "id": "2.2.2",
+      "descripcion": "Formato de superficie (FORMAT 105)",
+      "estado": "OK",
+      "detalle": "9 pares por línea"
+    },
+    {
+      "id": "2.2.3",
+      "descripcion": "Identificador de plataforma (SYNOP)",
+      "estado": "OK",
+      "detalle": "'SYNOP' presente en 654 registros"
+    },
+    {
+      "id": "2.2.4",
+      "descripcion": "Timestamps de las observaciones",
+      "estado": "OK",
+      "detalle": "654 timestamps válidos, orden cronológico OK, cadencia 5 min, segundos en [0]"
+    },
+    {
+      "id": "2.2.5",
+      "descripcion": "Cantidad de obs vs max_obs",
+      "estado": "OK",
+      "detalle": "654 obs <= max_obs=10000"
+    },
+    {
+      "id": "2.2.6",
+      "descripcion": "Cobertura temporal de las observaciones",
+      "estado": "ADVERTENCIA",
+      "detalle": "tercio1: 223 obs / tercio2: 0 obs / tercio3: 0 obs; tercios [2, 3] con menos de 5 obs (nudging sin efecto ahí)"
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+=== Pronóstico diario WRF ===
+Fecha: 2026-10-21 | args: --fecha 2026-10-21
+Log: /home/pgich/wrf-modular-diario-V-/logs/run_2026-10-21_20261021_170147.log
+2026-10-21 17:01:48,256 [INFO] Histórico ya descargado: ecowitt_historico_20261021.csv
+2026-10-21 17:01:48,274 [INFO] QC: 1130 registros válidos tras la limpieza.
+2026-10-21 17:01:48,399 [INFO] Archivo Little_R generado en /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/input/littler_20261021_1240.txt con 1130 registros.
+2026-10-21 17:01:48,430 [INFO] Hold-out espacial: 476 observaciones de estaciones 'evaluacion' omitidas de la asimilacion (no van a /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/input/OBS_DOMAIN101).
+2026-10-21 17:01:48,438 [INFO] OBS_DOMAIN101 generado en /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/input/OBS_DOMAIN101 con 654 observaciones (orden cronológico).
+2026-10-21 17:01:48,438 [INFO] Little_R: littler_20261021_1240.txt (1130 obs). OBS_DOMAIN101: OBS_DOMAIN101 (654 obs asimilables).
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f000
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f003
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f006
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f009
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f012
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f015
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f018
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f021
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f024
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f027
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f030
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f033
+2026-10-21 17:02:01,754 [INFO] Archivo GFS ya existe: gfs.t12z.pgrb2.0p25.f036
+2026-10-21 17:05:28,579 [INFO] Namelist guardado en /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/input/namelist_diario.input
+2026-10-21 17:05:28,580 [INFO] Namelist diario: namelist_diario.input (start 2026-10-21 12:00:00, run_hours=36, obs_nudge_opt=1, fdda_end=2160 min)
+2026-10-21 17:05:28,580 [INFO]   Copiado OBS_DOMAIN101 -> /home/pgich/wrf-modular-diario-V-/run_wrf/OBS_DOMAIN101
+2026-10-21 17:05:28,581 [INFO]   Copiado namelist_diario.input -> /home/pgich/wrf-modular-diario-V-/run_wrf/namelist.input
+2026-10-21 17:05:28,598 [INFO] === PREFLIGHT ===
+2026-10-21 17:05:28,598 [INFO]   Preflight diario (2026-10-21 17:05:28) -> ejecutar_wrf=SI
+2026-10-21 17:05:28,598 [INFO]     [         OK] 2.2.0 Zona horaria del host : TZ del host: UTC (UTC+0) = UTC
+2026-10-21 17:05:28,598 [INFO]     [         OK] 2.2.1 Existencia del JSON de observaciones : 1130 registros
+2026-10-21 17:05:28,599 [INFO]     [         OK] 2.2.2 Formato de superficie (FORMAT 105) : 9 pares por línea
+2026-10-21 17:05:28,599 [INFO]     [         OK] 2.2.3 Identificador de plataforma (SYNOP) : 'SYNOP' presente en 654 registros
+2026-10-21 17:05:28,599 [INFO]     [         OK] 2.2.4 Timestamps de las observaciones : 654 timestamps válidos, orden cronológico OK, cadencia 5 min, segundos en [0]
+2026-10-21 17:05:28,599 [INFO]     [         OK] 2.2.5 Cantidad de obs vs max_obs : 654 obs <= max_obs=10000
+2026-10-21 17:05:28,599 [INFO]     [ADVERTENCIA] 2.2.6 Cobertura temporal de las observaciones : tercio1: 223 obs / tercio2: 0 obs / tercio3: 0 obs; tercios [2, 3] con menos de 5 obs (nudging sin efecto ahí)
+2026-10-21 17:05:28,599 [INFO]     Resumen: 7 chequeos, 0 bloqueantes, 1 advertencias.
+2026-10-21 17:05:28,599 [INFO] Preflight guardado en /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/preflight_diario.json
+2026-10-21 17:05:28,599 [INFO] Paso: Corriendo real.exe...
+2026-10-21 17:05:28,599 [INFO]   Ejecutando: ./real.exe (Log: real.log)
+2026-10-21 17:05:30,537 [INFO]   Turning off use of TROPOPAUSE level data in vertical interpolation
+2026-10-21 17:05:30,537 [INFO]   Using sfcprs3 to compute psfc
+2026-10-21 17:05:30,537 [INFO]   No average surface temperature for use with inland lakes
+2026-10-21 17:05:30,537 [INFO]    Assume Noah LSM input
+2026-10-21 17:05:30,537 [INFO]   forcing artificial silty clay loam at   14 points, out of   4661
+2026-10-21 17:05:30,537 [INFO]   Timing for processing          0 s.
+2026-10-21 17:05:30,537 [INFO]    LBC valid between these times 2026-10-22_21:00:00 and 2026-10-23_00:00:00
+2026-10-21 17:05:30,537 [INFO]   Timing for output          0 s.
+2026-10-21 17:05:30,537 [INFO]   Timing for loop #   13 =          0 s.
+2026-10-21 17:05:30,537 [INFO]   real_em: SUCCESS COMPLETE REAL_EM INIT
+2026-10-21 17:05:30,538 [INFO] real.exe finalizado exitosamente.
+2026-10-21 17:05:30,541 [INFO] Paso: Corriendo wrf.exe (Nudged) [intento 1/6]...
+2026-10-21 17:05:30,541 [INFO]   Ejecutando: ./wrf.exe (Log: wrf_nudged.log)
+2026-10-21 17:20:14,479 [INFO]   0-------------EOF REACHED FOR NVOL =  61 AND XTIME =    2158.00-------------------
+2026-10-21 17:20:14,479 [INFO]    closed fdda file for inest=           1           0
+2026-10-21 17:20:14,479 [INFO]   ****** CALL IN4DOB AT KTAU =  1203 AND XTIME =    2158.00:  NSTA =       0 ******
+2026-10-21 17:20:14,479 [INFO]   OBS NUDGING: Reading new obs for time window TBACK =   34.967 TFORWD =   36.967 for grid =  1
+2026-10-21 17:20:14,479 [INFO]   0-------------EOF REACHED FOR NVOL =  61 AND XTIME =    2158.00-------------------
+2026-10-21 17:20:14,479 [INFO]    closed fdda file for inest=           1           0
+2026-10-21 17:20:14,479 [INFO]   ****** CALL IN4DOB AT KTAU =  1203 AND XTIME =    2158.00:  NSTA =       0 ******
+2026-10-21 17:20:14,479 [INFO]   Timing for main (dt=120.00): time 2026-10-23_00:00:00 on domain   1:    0.29131 elapsed seconds
+2026-10-21 17:20:14,479 [INFO]   Timing for Writing wrfout_d01_2026-10-23_00:00:00 for domain        1:    0.23037 elapsed seconds
+2026-10-21 17:20:14,479 [INFO]   wrf: SUCCESS COMPLETE WRF
+2026-10-21 17:20:14,481 [INFO]   wrf.exe (Nudged) completado en 00:14:43 (intento 1)
+2026-10-21 17:20:14,481 [INFO]   wrf.exe (Nudged) reintentos consumidos: 0
+2026-10-21 17:20:14,644 [INFO] Copiados 37 wrfout a /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/nudged
+2026-10-21 17:20:14,644 [INFO] Producto: /home/pgich/anaconda3/envs/wrf-operativo-p3/bin/python /home/pgich/wrf-modular-diario-V-/scripts/generar_producto.py --nudged-dir /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/nudged --output /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos --valid-time 2026-10-22_00:00:00 --valid-time 2026-10-22_03:00:00 --valid-time 2026-10-22_06:00:00 --valid-time 2026-10-22_09:00:00 --valid-time 2026-10-22_12:00:00 --valid-time 2026-10-22_15:00:00 --valid-time 2026-10-22_18:00:00 --valid-time 2026-10-22_21:00:00
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_000000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_030000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_060000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_090000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_120000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_150000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_180000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   -> /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z/productos/producto_20261022_210000.png  (obs: 0)
+2026-10-21 17:20:23,364 [INFO]   Listo.
+2026-10-21 17:20:23,364 [INFO] Informe diario escrito: informe_diario.md
+2026-10-21 17:20:23,365 [INFO] Pronóstico diario completo: /home/pgich/wrf-modular-diario-V-/outputs/2026-10-21_12z
+=== Código de salida: 0 ===

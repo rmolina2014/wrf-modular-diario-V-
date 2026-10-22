@@ -13,9 +13,9 @@ dist/
 venv/
 VENV/
 
-# Logs
-logs/
-*.log
+# Logs (se versionan los copiados en outputs/<caso>/logs/)
+/logs/
+wps_sanjuan/*.log
 
 # SO
 .DS_Store
@@ -30,11 +30,15 @@ geo_em*
 FILE:*
 GRIBFILE.*
 
-# Datos descargados (obs + GFS)
-data/
+# Datos descargados (se versiona el crudo de obs; el GFS pesa GBs)
+data/*
+!data/raw/
 wps_sanjuan/gfs_data/
 wps_sanjuan/FILE:*
 wps_sanjuan/GRIBFILE.*
 
-# Productos de salida (se generan en cada corrida diaria)
-outputs/
+# Directorio de corrida WRF (symlinks a wrf.exe/real.exe + archivos de la corrida)
+run_wrf/
+
+# Productos de salida: se versionan informes, valores (CSV) y productos.
+# Los wrfout/intermediarios .nc quedan excluidos por *.nc y wrfout*.

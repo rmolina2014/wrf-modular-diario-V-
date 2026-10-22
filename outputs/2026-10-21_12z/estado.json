@@ -1,0 +1,17 @@
+{
+  "fecha": "2026-10-21",
+  "ciclo": "12",
+  "run_hours": 36,
+  "estado": "EJECUTADO",
+  "detalle": "pronóstico 36h con asimilación (obs_nudge_opt=1)",
+  "obs_nudge_opt": 1,
+  "fuente_gfs": "aws",
+  "obs_dia": 1130,
+  "obs_ventana": 1130,
+  "obs_estaciones": 8,
+  "obs_ventana_asim": 654,
+  "obs_estaciones_asim": 5,
+  "n_wrfout": 37,
+  "ts_inicio": "2026-10-21T17:01:48",
+  "ts_fin": "2026-10-21T17:20:23"
+}

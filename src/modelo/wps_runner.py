@@ -13,9 +13,8 @@ class WPSRunner:
     """Orquestador de ejecutables de WPS para generación de archivos met_em."""
 
     def __init__(self, wps_dir: Optional[str] = None):
-        # PC pgich: "/home/pgich/Build_WRF/WPS"
-        # PC roberto (WPS 4.0, en desuso): "/home/roberto/opencode/wrf/WPS-4.0"
-        self.wps_dir = Path(wps_dir or os.environ.get("WPS_DIR", "/home/roberto/opencode/wrf/WPS-4.5"))  # PC roberto
+        # PC pgich (WPS 4.5 en Build_WRF)
+        self.wps_dir = Path(wps_dir or os.environ.get("WPS_DIR", "/home/pgich/Build_WRF/WPS"))
 
     def verificar_archivos_metgrid(self, search_dir: Optional[str] = None) -> List[Path]:
         """Verifica la existencia de archivos met_em.d01.*.nc generados."""

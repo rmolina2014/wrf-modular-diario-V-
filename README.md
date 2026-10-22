@@ -46,12 +46,12 @@ wrf-modular-diario/
 
 El `.env` **no se sube al repositorio**. Las claves se leen desde el entorno la primera ejecución. El host debe operar en **UTC** (`TZ=UTC`, ya fijado por `run_diario.sh`): WRF y las observaciones trabajan en UTC.
 
-2. Verificar que exista el entorno Python con las dependencias (`xarray`, `netCDF4`, `pandas`, `python-dotenv`, `requests`, `matplotlib`). En esta PC: `/usr/bin/python3`.
+2. Verificar que exista el entorno Python con las dependencias (`xarray`, `netCDF4`, `pandas`, `python-dotenv`, `requests`, `matplotlib`). En esta PC: `/home/pgich/anaconda3/envs/wrf-operativo-p3/bin/python`.
 
 ## Uso manual (v1)
 
 ```bash
-cd /home/roberto/wrf-modular-diario
+cd /home/pgich/wrf-modular-diario-V-
 
 # 1) Comprobar disponibilidad del día (obs + GFS 12Z, sin correr nada pesado)
 ./run_diario.sh --dry-run

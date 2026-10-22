@@ -25,18 +25,11 @@ fi
 START_DATE="${FECHA}_${HORA}:00:00"
 END_DATE=$(date -d "${FECHA} ${HORA}:00:00 ${HORAS} hours" +%Y-%m-%d_%H:00:00)
 
-# Rutas WRF/WPS por detección; override con env vars (ver .env)
-if [ -d /home/roberto/opencode/wrf/WPS-4.5 ]; then
-    export WRF_BASE=${WRF_BASE:-/home/roberto/opencode/wrf}
-    export WPS_DIR=${WPS_DIR:-/home/roberto/opencode/wrf/WPS-4.5}
-    export WRF_EJECUTABLES=${WRF_EJECUTABLES:-/home/roberto/opencode/wrf/WRF-4.5}
-    export GEOG_DATA_PATH=${GEOG_DATA_PATH:-/home/roberto/opencode/wrf/geog/WPS_GEOG_LOW_RES}
-else
-    export WRF_BASE=${WRF_BASE:-/home/pgich/Build_WRF}
-    export WPS_DIR=${WPS_DIR:-/home/pgich/Build_WRF/WPS}
-    export WRF_EJECUTABLES=${WRF_EJECUTABLES:-/home/pgich/wrf-operativo/ejecutables}
-    export GEOG_DATA_PATH=${GEOG_DATA_PATH:-/home/pgich/wrf-operativo/datos/WPS_GEOG}
-fi
+# Rutas WRF/WPS (PC pgich); override con env vars (ver .env)
+export WRF_BASE=${WRF_BASE:-/home/pgich/Build_WRF}
+export WPS_DIR=${WPS_DIR:-/home/pgich/Build_WRF/WPS}
+export WRF_EJECUTABLES=${WRF_EJECUTABLES:-/home/pgich/wrf-operativo/ejecutables}
+export GEOG_DATA_PATH=${GEOG_DATA_PATH:-/home/pgich/wrf-operativo/datos/WPS_GEOG}
 source ${WRF_EJECUTABLES}/env.bash 2>/dev/null || true
 
 cd "$(dirname "$0")/../wps_sanjuan"

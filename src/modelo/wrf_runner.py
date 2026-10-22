@@ -21,8 +21,8 @@ class WRFRunner:
                  np: Optional[str] = None,
                  timeout: int = 7200,
                  reintentos: int = 5):
-        # PC roberto (WRF 4.0, en desuso): "/home/roberto/opencode/wrf/WRF-4.0/run"
-        self.run_dir = Path(run_dir or os.environ.get("LOCAL_WRF_DIR", "/home/roberto/opencode/wrf/WRF-4.5/run"))  # PC roberto
+        # PC pgich (WRF 4.5 en Build_WRF; dir de corrida aislado del proyecto)
+        self.run_dir = Path(run_dir or os.environ.get("LOCAL_WRF_DIR", "/home/pgich/wrf-modular-diario-V-/run_wrf"))
         self.env_bash = env_bash or os.environ.get("WRF_ENV_BASH", "")
         self.mpirun = mpirun or os.environ.get("MPIRUN", "/usr/bin/mpirun")
         self.np = str(np or os.environ.get("WRF_NP", "1"))

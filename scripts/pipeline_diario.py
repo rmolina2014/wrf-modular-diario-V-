@@ -56,8 +56,8 @@ OUT_BASE = ROOT / "outputs"
 NAMLIST_BASE = ROOT / "namelist.input"
 
 # --- Entorno WRF (override via .env) ---
-RUN_DIR = Path(os.environ.get("LOCAL_WRF_DIR", "/home/roberto/opencode/wrf/WRF-4.5/run"))
-WRF_ENV_BASH = os.environ.get("WRF_ENV_BASH", "/home/roberto/opencode/wrf/WRF-4.5/run/env.bash")
+RUN_DIR = Path(os.environ.get("LOCAL_WRF_DIR", "/home/pgich/wrf-modular-diario-V-/run_wrf"))
+WRF_ENV_BASH = os.environ.get("WRF_ENV_BASH", "/home/pgich/wrf-operativo/ejecutables/env.bash")
 MPIRUN = os.environ.get("MPIRUN", "/usr/bin/mpirun")
 WRF_NP = os.environ.get("WRF_NP", "1")
 VALIDATION_PYTHON = os.environ.get("VALIDATION_PYTHON", "/usr/bin/python3")
@@ -89,7 +89,7 @@ def _leer_namelist_valor(namelist: Path, clave: str) -> Optional[float]:
     if not namelist or not Path(namelist).exists():
         return None
     texto = Path(namelist).read_text(encoding="utf-8")
-    m = re.search(rf"^\s*{clave}\s*=\s*([0-9.]+)\s*[,]", texto, re.MULTILINE)
+    m = re.search(rf"^\s*{clave}\s*=\s*([0-9.]+)\s*,?\s*$", texto, re.MULTILINE)
     if m:
         try:
             return float(m.group(1))
@@ -312,14 +312,19 @@ def ejecutar_wps(fecha: str, ciclo: str, run_hours: int, timeout: int = 7200) ->
 
 
 def propagar_metem(fecha: str, ciclo: str, run_hours: int) -> int:
-    """Copia los met_em del ciclo a la carpeta de real.exe."""
+    """Copia a real.exe los met_em del ciclo [start, start+run_hours]."""
+    start_dt = datetime.strptime(f"{fecha} {ciclo}", "%Y-%m-%d %H")
+    end_dt = start_dt + timedelta(hours=run_hours)
     n = 0
-    met_files = sorted(WPS_DIR.glob(f"met_em.d01.{fecha}_{ciclo}:*"))
-    if not met_files:
-        met_files = sorted(WPS_DIR.glob(f"met_em.d01.{fecha}_*"))
-    for src in met_files:
-        shutil.copy2(src, RUN_DIR / src.name)
-        n += 1
+    for src in sorted(WPS_DIR.glob("met_em.d01.*.nc")):
+        marca = src.name.removeprefix("met_em.d01.").removesuffix(".nc")
+        try:
+            ts = datetime.strptime(marca, "%Y-%m-%d_%H:%M:%S")
+        except ValueError:
+            continue
+        if start_dt <= ts <= end_dt:
+            shutil.copy2(src, RUN_DIR / src.name)
+            n += 1
     return n
 
 
@@ -404,6 +409,28 @@ def check_run_dir(run_dir: Path) -> bool:
     for exe in ("wrf.exe", "real.exe"):
         if not (run_dir / exe).exists():
             logger.error(f"No se encuentra {exe} en {run_dir}")
+            return False
+    # Tablas de física y datos estáticos que wrf.exe lee del CWD (LANDUSE.TBL, etc.)
+    fuente = Path(os.environ.get("WRF_RUN_TPL", "/home/pgich/Build_WRF/WRF/run"))
+    if fuente.is_dir():
+        for item in fuente.iterdir():
+            if item.is_dir() or item.name.endswith(".exe") or item.name.startswith("namelist"):
+                continue
+            destino = run_dir / item.name
+            if not destino.exists() and not destino.is_symlink():
+                destino.symlink_to(item.resolve())
+    # ghg_input=1 (Registry) exige CAMtr_volume_mixing_ratio en el CWD de wrf.exe
+    if not (run_dir / "CAMtr_volume_mixing_ratio").exists():
+        camtr = Path(os.environ.get(
+            "WRF_CAMTR_FILE",
+            "/home/pgich/Build_WRF/WRF/test/em_real/CAMtr_volume_mixing_ratio",
+        ))
+        if camtr.exists():
+            (run_dir / "CAMtr_volume_mixing_ratio").symlink_to(camtr.resolve())
+            logger.info(f"CAMtr_volume_mixing_ratio enlazado en {run_dir}")
+        else:
+            logger.error("Falta CAMtr_volume_mixing_ratio y no se encontró la fuente "
+                         f"({camtr}); ghg_input=1 abortará wrf.exe")
             return False
     return True
 
@@ -699,8 +726,10 @@ def _pipeline(args) -> int:
         escribir_informe(caso_dir, {**estado, "estado": "FALLIDO", "detalle": det})
         return 1
     n_metem = propagar_metem(fecha, ciclo, run_hours)
-    if n_metem < 1:
-        det = "WPS no generó met_em"
+    intervalo_s = _leer_namelist_valor(NAMLIST_BASE, "interval_seconds") or 10800
+    esperados = int(round(run_hours * 3600 / intervalo_s)) + 1
+    if n_metem < esperados:
+        det = f"met_em incompletos: {n_metem}/{esperados} archivos propagados al run dir"
         logger.error(det)
         escribir_informe(caso_dir, {**estado, "estado": "FALLIDO", "detalle": det})
         return 1

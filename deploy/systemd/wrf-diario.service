@@ -6,11 +6,11 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=roberto
-WorkingDirectory=/home/roberto/wrf-modular-diario
+User=pgich
+WorkingDirectory=/home/pgich/wrf-modular-diario-V-
 # La fecha del ciclo la resuelve run_diario.sh (date -u: hoy UTC). Para una corrida
 # manual de otra fecha: run_diario.sh --fecha YYYY-MM-DD
-ExecStart=/home/roberto/wrf-modular-diario/run_diario.sh
+ExecStart=/home/pgich/wrf-modular-diario-V-/run_diario.sh
 StandardOutput=journal
 StandardError=journal
 TimeoutStartSec=21600

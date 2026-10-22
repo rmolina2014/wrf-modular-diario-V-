@@ -17,6 +17,14 @@ VENV/
 /logs/
 wps_sanjuan/*.log
 
+# Runtime de WPS (symlinks/copias generadas por run_wps_diario.sh)
+wps_sanjuan/*.exe
+wps_sanjuan/GEOGRID.TBL
+wps_sanjuan/METGRID.TBL
+wps_sanjuan/Vtable
+wps_sanjuan/link_grib.csh
+wps_sanjuan/namelist.wps
+
 # SO
 .DS_Store
 Thumbs.db
@@ -42,3 +50,5 @@ run_wrf/
 
 # Productos de salida: se versionan informes, valores (CSV) y productos.
 # Los wrfout/intermediarios .nc quedan excluidos por *.nc y wrfout*.
+# Ventana de observaciones fusionada (intermedio de una corrida)
+data/raw/*_ventana.csv

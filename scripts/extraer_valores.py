@@ -2,8 +2,9 @@
 """Extrae los valores del pronóstico (wrfout) a CSV legible.
 
 Genera dos archivos junto a los wrfout:
-  - valores_pronostico_estaciones.csv : T2, RH, PSFC y viento 10 m en las
-    estaciones del catálogo (punto de retícula más cercano) por tiempo válido.
+  - valores_pronostico_estaciones.csv : T2, RH, PSFC, viento 10 m y lluvia
+    acumulada (RAINC+RAINNC) en las estaciones del catálogo (punto de retícula
+    más cercano) por tiempo válido.
   - valores_pronostico_dominio.csv    : mín/máx/media de las mismas variables
     sobre toda la malla del dominio por tiempo válido.
 
@@ -82,9 +83,14 @@ def main() -> int:
             psfc = ds["PSFC"].values
             u10 = ds["U10"].values
             v10 = ds["V10"].values
+            lluvia = None
+            if "RAINC" in ds.variables and "RAINNC" in ds.variables:
+                lluvia = ds["RAINC"].values + ds["RAINNC"].values
             # frames_per_outfile=1: un solo tiempo por wrfout
             if t2.ndim == 3:
                 t2, q2, psfc, u10, v10 = (v[0] for v in (t2, q2, psfc, u10, v10))
+                if lluvia is not None:
+                    lluvia = lluvia[0]
             lat = ds["XLAT"].values
             lon = ds["XLONG"].values
             if lat.ndim == 3:
@@ -105,6 +111,9 @@ def main() -> int:
                 "psfc_media_hpa": round(float(np.nanmean(psfc)) / 100.0, 1),
                 "viento_max_kmh": round(float(np.nanmax(spd)), 1),
                 "viento_media_kmh": round(float(np.nanmean(spd)), 1),
+                **({"lluvia_acum_max_mm": round(float(np.nanmax(lluvia)), 1),
+                    "lluvia_acum_media_mm": round(float(np.nanmean(lluvia)), 2)}
+                   if lluvia is not None else {}),
             })
 
             for est in estaciones:
@@ -121,6 +130,8 @@ def main() -> int:
                     "psfc_hpa": round(float(psfc[j, i]) / 100.0, 1),
                     "viento_kmh": round(float(spd[j, i]), 1),
                     "direccion_grados": round(float(dirg[j, i]), 0),
+                    **({"lluvia_acum_mm": round(float(lluvia[j, i]), 1)}
+                       if lluvia is not None else {}),
                 })
         print(f"  {archivo.name}: ok")
 

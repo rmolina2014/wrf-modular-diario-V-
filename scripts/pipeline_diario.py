@@ -95,6 +95,11 @@ GFS_URLS = {
     "nomads": "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{fecha}/{ciclo}/atmos/{file}",
 }
 
+# Resolución GFS: 0p50 para los 4 ciclos diarios (0p25 queda como opción de sensibilidad).
+GFS_RES = os.environ.get("GFS_RES", "0p50")
+# Con 4 ciclos/día el GFS ocupa ~2-3 GB por ciclo: se borra tras generar met_em salvo KEEP_GFS=1.
+KEEP_GFS = os.environ.get("KEEP_GFS", "0") == "1"
+
 
 # --------------------------------------------------------------------------
 # Utilidades
@@ -127,7 +132,8 @@ def _leer_namelist_valor(namelist: Path, clave: str) -> Optional[float]:
 # --------------------------------------------------------------------------
 def calcular_ventana(fecha: str, ciclo: str, asim_hours: int,
                      horizon_h: Optional[int] = None,
-                     run_hours: Optional[int] = None) -> Dict[str, Any]:
+                     run_hours: Optional[int] = None,
+                     dia_objetivo: Optional[str] = None) -> Dict[str, Any]:
     """Ventana temporal de la corrida. Todos los datetime son UTC naive.
 
         start = <fecha> <ciclo>Z       t0 = start + asim_hours       end = start + run_hours
@@ -135,9 +141,12 @@ def calcular_ventana(fecha: str, ciclo: str, asim_hours: int,
 
     - Hasta t0 se asimilan observaciones; desde t0 el modelo corre solo.
     - run_hours = asim_hours + horizonte.
-    - El día objetivo es el día local siguiente al de t0. Si no se fija el horizonte
-      (--horizon-h / --run-hours), se calcula el necesario para llegar al fin de ese
-      día local, redondeado hacia arriba al paso de las condiciones de borde (3 h).
+    - Sin ``dia_objetivo``, el día objetivo es el día local siguiente al de t0. Con
+      ``dia_objetivo`` (fecha local YYYY-MM-DD) se ancla explícitamente, lo que permite
+      que los 4 ciclos pronostiquen el mismo día local.
+    - Si no se fija el horizonte (--horizon-h / --run-hours), se calcula el necesario para
+      llegar al fin del día objetivo, redondeado hacia arriba al paso de las condiciones
+      de borde (3 h).
     """
     if asim_hours <= 0:
         raise ValueError(f"--asim-hours debe ser > 0 (recibido {asim_hours})")
@@ -145,9 +154,14 @@ def calcular_ventana(fecha: str, ciclo: str, asim_hours: int,
     t0 = start + timedelta(hours=asim_hours)
 
     huso = timedelta(hours=HUSO_LOCAL_H)
-    dia_obj = ((t0 + huso) + timedelta(days=1)).date()
+    if dia_objetivo:
+        dia_obj = datetime.strptime(dia_objetivo, "%Y-%m-%d").date()
+    else:
+        dia_obj = ((t0 + huso) + timedelta(days=1)).date()
     obj_ini = datetime.combine(dia_obj, datetime.min.time()) - huso
     obj_fin = obj_ini + timedelta(days=1)
+    if t0 >= obj_fin:
+        raise ValueError(f"el día objetivo {dia_obj} termina antes de t0 ({t0:%Y-%m-%d %H}Z)")
 
     if run_hours is not None:
         horizon = int(run_hours) - asim_hours
@@ -170,10 +184,9 @@ def calcular_ventana(fecha: str, ciclo: str, asim_hours: int,
 
     # Tiempos válidos del día objetivo (cada 3 h) que caen en el pronóstico libre.
     valid_times: List[str] = []
-    t = obj_ini
-    while t <= obj_fin:
-        if t0 <= t <= end:
-            valid_times.append(t.strftime("%Y-%m-%d_%H:%M:%S"))
+    t = max(obj_ini, t0)
+    while t <= obj_fin and t <= end:
+        valid_times.append(t.strftime("%Y-%m-%d_%H:%M:%S"))
         t += timedelta(hours=PASO_HORAS)
 
     return {
@@ -252,15 +265,18 @@ def obtener_obs_ventana(start: datetime, t0: datetime, fuerza: bool = False) -> 
     return destino
 
 
-def cobertura_obs(csv_path: Path, start: datetime, t0: datetime) -> Dict[str, Any]:
+def cobertura_obs(csv_path: Path, start: datetime, t0: datetime,
+                  asimilables: Optional[set] = None) -> Dict[str, Any]:
     """Mide la cobertura de observaciones válidas (temperatura) del CSV y en la ventana.
 
-    Devuelve métricas del CSV completo y de la ventana de asimilación [start, t0] (la única
-    parte que el nudging puede usar). Se asimilan todas las estaciones que tengan datos
-    (sin hold-out); las métricas de la ventana deciden si la corrida avanza.
+    Devuelve métricas del CSV completo, de la ventana de asimilación [start, t0] (la única
+    parte que el nudging puede usar) y de esa ventana restringida a ``asimilables`` (las
+    estaciones que entran a OBS_DOMAIN101 cuando hay hold-out). Sin ``asimilables`` se
+    asimilan todas las estaciones con datos.
     """
     df = pd.read_csv(csv_path)
-    vacio = {"dia": 0, "ventana": 0, "estaciones": 0, "por_estacion": {}}
+    vacio = {"dia": 0, "ventana": 0, "estaciones": 0, "por_estacion": {},
+             "ventana_asim": 0, "estaciones_asim": 0, "por_estacion_asim": {}}
     if df.empty or "temp_c" not in df.columns:
         return vacio
 
@@ -275,7 +291,23 @@ def cobertura_obs(csv_path: Path, start: datetime, t0: datetime) -> Dict[str, An
     ventana = int(len(en_ventana))
     por_estacion = en_ventana.groupby("estacion")["temp_ok"].sum().astype(int).to_dict()
 
-    return {"dia": dia, "ventana": ventana, "estaciones": len(por_estacion), "por_estacion": por_estacion}
+    asim = en_ventana if asimilables is None else en_ventana[en_ventana["estacion"].isin(asimilables)]
+    por_estacion_asim = asim.groupby("estacion")["temp_ok"].sum().astype(int).to_dict()
+
+    return {"dia": dia, "ventana": ventana, "estaciones": len(por_estacion),
+            "por_estacion": por_estacion,
+            "ventana_asim": int(len(asim)), "estaciones_asim": len(por_estacion_asim),
+            "por_estacion_asim": por_estacion_asim}
+
+
+def _estaciones_asimilables() -> Optional[set]:
+    """Nombres con rol != evaluacion (las que entran a OBS_DOMAIN101 con --holdout)."""
+    try:
+        catalogo = json.loads(ESTACIONES_JSON.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning(f"No se pudo leer {ESTACIONES_JSON.name} para el hold-out: {e}")
+        return None
+    return {n for n, meta in catalogo.items() if (meta or {}).get("rol") != "evaluacion"}
 
 
 def generar_dataframe_validado(csv_path: Path, start: Optional[datetime] = None,
@@ -333,9 +365,9 @@ def generar_obs_flat(df: pd.DataFrame) -> List[Dict[str, Any]]:
 # GFS
 # --------------------------------------------------------------------------
 def gfs_disponible(fecha: str, ciclo: str, fhour: int) -> Optional[str]:
-    """Verifica disponibilidad del archivo pgrb2 0.25 en AWS/NOMADS. Devuelve fuente o None."""
+    """Verifica disponibilidad del archivo pgrb2 en AWS/NOMADS. Devuelve fuente o None."""
     fstr = f"{fhour:03d}"
-    file = f"gfs.t{ciclo}z.pgrb2.0p25.f{fstr}"
+    file = f"gfs.t{ciclo}z.pgrb2.{GFS_RES}.f{fstr}"
     fecha_nodash = fecha.replace("-", "")
     for fuente, tpl in GFS_URLS.items():
         url = tpl.format(fecha=fecha_nodash, ciclo=ciclo, file=file)
@@ -357,7 +389,7 @@ def requests_head(url: str, timeout: int = 30) -> int:
 
 def _tamano_esperado_gfs(fecha: str, ciclo: str, fhour: int, fuente: str = "aws") -> Optional[int]:
     fstr = f"{fhour:03d}"
-    file = f"gfs.t{ciclo}z.pgrb2.0p25.f{fstr}"
+    file = f"gfs.t{ciclo}z.pgrb2.{GFS_RES}.f{fstr}"
     url = GFS_URLS.get(fuente, GFS_URLS["aws"]).format(fecha=fecha.replace("-", ""), ciclo=ciclo, file=file)
     import requests
 
@@ -396,7 +428,7 @@ def descargar_gfs(fecha: str, ciclo: str, run_hours: int, fuente: str = "aws") -
     horas = list(range(0, run_hours + 1, 3))
     # Eliminar archivos truncados (descargas interrumpidas)
     for fh in horas:
-        fname = f"gfs.t{ciclo}z.pgrb2.0p25.f{fh:03d}"
+        fname = f"gfs.t{ciclo}z.pgrb2.{GFS_RES}.f{fh:03d}"
         p = out / fname
         if not p.exists():
             continue
@@ -404,8 +436,8 @@ def descargar_gfs(fecha: str, ciclo: str, run_hours: int, fuente: str = "aws") -
         if esperado and abs(p.stat().st_size - esperado) > 0.02 * esperado:
             logger.warning(f"GFS corrupto ({p.stat().st_size} vs {esperado} B): re-descargando {fname}")
             p.unlink()
-    GFSDownloader(str(out)).descargar_ciclo(fecha, ciclo_hora=ciclo, horas_pronostico=horas, fuente=fuente)
-    return sum(1 for fh in horas if (out / f"gfs.t{ciclo}z.pgrb2.0p25.f{fh:03d}").exists())
+    GFSDownloader(str(out), res=GFS_RES).descargar_ciclo(fecha, ciclo_hora=ciclo, horas_pronostico=horas, fuente=fuente)
+    return sum(1 for fh in horas if (out / f"gfs.t{ciclo}z.pgrb2.{GFS_RES}.f{fh:03d}").exists())
 
 
 # --------------------------------------------------------------------------
@@ -501,7 +533,7 @@ def _contar_obsdomain(path: Path) -> int:
     return len(lineas) // 5
 
 
-def generar_obsdomain(df: pd.DataFrame, out_dir: Path) -> Tuple[Path, int]:
+def generar_obsdomain(df: pd.DataFrame, out_dir: Path, holdout: bool = False) -> Tuple[Path, int]:
     from src.asimilacion.littler_writer import LittleRWriter
     from src.asimilacion.obsnud_writer import ObsNudWriter
 
@@ -511,7 +543,7 @@ def generar_obsdomain(df: pd.DataFrame, out_dir: Path) -> Tuple[Path, int]:
         df, output_path=str(out_dir / f"littler_{ts}.txt")
     )
     obsdomain = ObsNudWriter(config_estaciones_path=str(ESTACIONES_JSON)).generar_desde_dataframe(
-        df, output_path=str(out_dir / "OBS_DOMAIN101")
+        df, output_path=str(out_dir / "OBS_DOMAIN101"), usar_roles=holdout
     )
     # num_obs mide el archivo que efectivamente se asimila (OBS_DOMAIN101).
     num_obs = _contar_obsdomain(Path(obsdomain))
@@ -625,8 +657,9 @@ def extraer_valores(nudged_dir: Path, caso_dir: Path, t0: datetime) -> Tuple[int
     return 0, ""
 
 
-def escribir_informe(caso_dir: Path, estado: Dict[str, Any]):
-    md = caso_dir / "informe_diario.md"
+def escribir_informe(caso_dir: Path, estado: Dict[str, Any], sufijo: str = ""):
+    nombre = f"_{sufijo}" if sufijo else ""
+    md = caso_dir / f"informe{nombre}.md"
     lines = [f"# Pronóstico diario WRF - {estado['fecha']} {estado['ciclo']}Z",
              "",
              f"**Generado:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (local)",
@@ -643,21 +676,24 @@ def escribir_informe(caso_dir: Path, estado: Dict[str, Any]):
              f"| Duración total | {estado.get('run_hours', '-')} h |",
              f"| Día objetivo (local) | {estado.get('dia_objetivo_local', '-')} |",
              f"| Obs nudging | obs_nudge_opt={estado.get('obs_nudge_opt', 1)} |",
+             f"| Hold-out | {'sí (rol=evaluacion excluido)' if estado.get('holdout') else 'no'} |",
              f"| Fuente GFS | {estado.get('fuente_gfs', '-')} |",
              f"| wrfout | {estado.get('n_wrfout', 0)} |",
              "",
              "## Observaciones",
              "",
              f"- Registros válidos del día: **{estado.get('obs_dia', 0)}**",
-             f"- Asimiladas en la ventana [inicio, t0]: **{estado.get('obs_ventana', 0)}** registros",
-             f"- Estaciones asimiladas (todas las que tienen datos): **{estado.get('obs_estaciones', 0)}**",
+             f"- En la ventana [inicio, t0]: **{estado.get('obs_ventana', 0)}** registros en "
+             f"**{estado.get('obs_estaciones', 0)}** estaciones",
+             f"- Asimiladas en OBS_DOMAIN101: **{estado.get('obs_ventana_asim', 0)}** registros en "
+             f"**{estado.get('obs_estaciones_asim', 0)}** estaciones",
              "",
              f"## Resultados",
              f"`{caso_dir}`",
              ""]
     md.write_text("\n".join(lines), encoding="utf-8")
 
-    with open(caso_dir / "estado.json", "w", encoding="utf-8") as f:
+    with open(caso_dir / f"estado{nombre}.json", "w", encoding="utf-8") as f:
         json.dump(estado, f, indent=2, ensure_ascii=False, default=str)
     logger.info(f"Informe diario escrito: {md.name}")
 
@@ -759,7 +795,8 @@ def pipeline(args) -> int:
 def _pipeline(args) -> int:
     fecha = args.fecha
     ciclo = f"{int(args.ciclo):02d}"
-    vent = calcular_ventana(fecha, ciclo, args.asim_hours, args.horizon_h, args.run_hours)
+    vent = calcular_ventana(fecha, ciclo, args.asim_hours, args.horizon_h, args.run_hours,
+                            dia_objetivo=args.dia_objetivo)
     start_dt, t0, run_hours = vent["start"], vent["t0"], vent["run_hours"]
     logger.info(f"Protocolo temporal: start {start_dt:%Y-%m-%d %H}Z | t0 {t0:%Y-%m-%d %H}Z "
                 f"(asimilación {vent['asim_hours']} h) | pronóstico libre {vent['horizon_h']} h "
@@ -784,14 +821,17 @@ def _pipeline(args) -> int:
         "horizon_h": vent["horizon_h"], "dia_objetivo_local": str(vent["dia_objetivo"]),
         "estado": "EJECUTANDO", "detalle": "", "obs_nudge_opt": 1,
         "fuente_gfs": "-", "obs_dia": 0, "obs_ventana": 0, "obs_estaciones": 0,
+        "obs_ventana_asim": 0, "obs_estaciones_asim": 0, "holdout": bool(args.holdout),
         "n_wrfout": 0, "ts_inicio": datetime.now().isoformat(timespec="seconds"),
     }
 
     # ---- 1. Observaciones ----
     try:
         csv = obtener_obs_ventana(start_dt, t0, args.force)
-        cov = cobertura_obs(csv, start_dt, t0)
-        estado.update(obs_dia=cov["dia"], obs_ventana=cov["ventana"], obs_estaciones=cov["estaciones"])
+        asimilables = _estaciones_asimilables() if args.holdout else None
+        cov = cobertura_obs(csv, start_dt, t0, asimilables=asimilables)
+        estado.update(obs_dia=cov["dia"], obs_ventana=cov["ventana"], obs_estaciones=cov["estaciones"],
+                      obs_ventana_asim=cov["ventana_asim"], obs_estaciones_asim=cov["estaciones_asim"])
     except Exception as e:
         logger.exception("Fallo al obtener observaciones")
         escribir_informe(caso_dir, {**estado, "estado": "FALLIDO", "detalle": f"obs: {e}"})
@@ -800,24 +840,32 @@ def _pipeline(args) -> int:
     if args.dry_run:
         gfs = verificar_gfs_completo(fecha, ciclo, run_hours)
         logger.info(f"[DRY] {fecha} {ciclo}Z (t0 {t0:%H}Z, total {run_hours} h): "
-                    f"obs csv={cov['dia']} ventana={cov['ventana']} reg / {cov['estaciones']} est | "
+                    f"obs csv={cov['dia']} ventana={cov['ventana']} reg / {cov['estaciones']} est "
+                    f"(asim {cov['ventana_asim']} reg / {cov['estaciones_asim']} est) | "
                     f"GFS {('completo (' + str(gfs['fuente']) + ')') if gfs['completo'] else 'INCOMPLETO: faltan f' + str(gfs['faltantes'])}")
+        previo = {}
+        try:
+            previo = json.loads((caso_dir / "estado.json").read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        sufijo = "dry_run" if previo.get("estado") == "EJECUTADO" else ""
         escribir_informe(caso_dir, {**estado, "estado": "DRY_RUN",
-                                    "detalle": f"GFS {'ok' if gfs['completo'] else 'incompleto'}"})
+                                    "detalle": f"GFS {'ok' if gfs['completo'] else 'incompleto'}"},
+                         sufijo=sufijo)
         return 0
 
-    # Los umbrales se evalúan sobre la ventana de asimilación [start, t0] con todas las
-    # estaciones que tengan datos (no hay hold-out: todas entran a OBS_DOMAIN101).
-    if (cov["ventana"] < OBS_MIN_REGISTROS or cov["estaciones"] < OBS_MIN_ESTACIONES) \
+    # Los umbrales se evalúan sobre las estaciones que realmente entran a OBS_DOMAIN101:
+    # con --holdout se excluyen las de rol=evaluacion; sin él se asimilan todas.
+    if (cov["ventana_asim"] < OBS_MIN_REGISTROS or cov["estaciones_asim"] < OBS_MIN_ESTACIONES) \
             and not args.continue_sin_obs:
-        det = (f"cobertura insuficiente en la ventana de asimilación ({cov['ventana']} registros, "
-               f"{cov['estaciones']} estaciones con datos). "
+        det = (f"cobertura insuficiente en la ventana de asimilación ({cov['ventana_asim']} registros, "
+               f"{cov['estaciones_asim']} estaciones asimilables; holdout={bool(args.holdout)}). "
                "Usá --continue-sin-obs para pronóstico GFS puro.")
         logger.error(det)
         escribir_informe(caso_dir, {**estado, "estado": "SIN_OBS", "detalle": det})
         return 3
 
-    obs_nudge_opt = 1 if cov["estaciones"] > 0 else 0
+    obs_nudge_opt = 1 if cov["estaciones_asim"] > 0 else 0
     if args.continue_sin_obs and obs_nudge_opt == 0:
         logger.warning("Sin observaciones: corrida degradada a pronóstico GFS puro (obs_nudge_opt=0).")
     estado["obs_nudge_opt"] = obs_nudge_opt
@@ -835,7 +883,7 @@ def _pipeline(args) -> int:
         obs_flat_path = caso_dir / "input" / "obs_flat.json"
         obs_flat_path.parent.mkdir(parents=True, exist_ok=True)
         obs_flat_path.write_text(json.dumps(obs_flat, indent=1), encoding="utf-8")
-        obsdomain, num_obs = generar_obsdomain(df, input_dir)
+        obsdomain, num_obs = generar_obsdomain(df, input_dir, holdout=bool(args.holdout))
     except Exception as e:
         logger.exception("Fallo en QC/Little_R/OBS_DOMAIN101")
         escribir_informe(caso_dir, {**estado, "estado": "FALLIDO", "detalle": f"obsdomain: {e}"})
@@ -890,6 +938,11 @@ def _pipeline(args) -> int:
         logger.error(det)
         escribir_informe(caso_dir, {**estado, "estado": "FALLIDO", "detalle": det})
         return 1
+    if not KEEP_GFS:
+        gfs_dir = WPS_DIR / "gfs_data" / f"{fecha}_{ciclo}"
+        if gfs_dir.exists():
+            shutil.rmtree(gfs_dir, ignore_errors=True)
+            logger.info(f"GFS purgado tras WPS: {gfs_dir}")
 
     # ---- 5. Verificar run dir + namelist ----
     if not check_run_dir(RUN_DIR):
@@ -981,7 +1034,12 @@ def main():
                    help=f"Horas de asimilación desde el inicio; t0 = inicio + asim-hours (default: {ASIM_HOURS_DEFAULT}).")
     p.add_argument("--horizon-h", type=int, default=None,
                    help="Horas de pronóstico libre desde t0 (default: las que hagan falta para "
-                        "cubrir el día local siguiente al de t0).")
+                        "cubrir el día objetivo).")
+    p.add_argument("--dia-objetivo", default=None,
+                   help="Día objetivo local YYYY-MM-DD (default: día local siguiente al de t0). "
+                        "Con los 4 ciclos se usa la fecha del ciclo + 1 día.")
+    p.add_argument("--holdout", action="store_true",
+                   help="No asimilar estaciones con rol=evaluacion (verificación independiente).")
     p.add_argument("--run-hours", type=int, default=None,
                    help="Duración total (asimilación + libre). Alternativa a --horizon-h.")
     p.add_argument("--dry-run", action="store_true", help="Solo disponibilidad (obs + GFS), sin ejecutar nada pesado.")
@@ -999,7 +1057,8 @@ def main():
     p.add_argument("--reintentos", type=int, default=5, help="Reintentos de wrf.exe si aborta (SIGSEGV intermitente).")
     args = p.parse_args()
     try:
-        calcular_ventana(args.fecha, args.ciclo, args.asim_hours, args.horizon_h, args.run_hours)
+        calcular_ventana(args.fecha, args.ciclo, args.asim_hours, args.horizon_h, args.run_hours,
+                         dia_objetivo=args.dia_objetivo)
     except ValueError as e:
         p.error(str(e))
     return pipeline(args)

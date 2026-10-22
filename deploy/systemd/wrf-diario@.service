@@ -1,0 +1,17 @@
+[Unit]
+Description=WRF diario San Juan - ciclo %i UTC (asimilación 12 h + pronóstico libre)
+Documentation=file:///home/pgich/wrf-modular-diario-V-/PLAN.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pgich
+Group=pgich
+WorkingDirectory=/home/pgich/wrf-modular-diario-V-
+ExecStart=/home/pgich/wrf-modular-diario-V-/scripts/run_ciclo.sh %i
+Environment=TZ=UTC
+TimeoutStartSec=7200
+Nice=10
+StandardOutput=journal
+StandardError=journal

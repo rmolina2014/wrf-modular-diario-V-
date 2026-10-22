@@ -103,9 +103,9 @@ La corrida necesita las observaciones hasta **t0 (18Z con los defaults)**, así 
 ## Flujo del orquestador (`pipeline_diario.py`)
 
 1. **Observaciones:** histórico EcoWitt de la ventana `[start, t0]` → QC → `obs_flat.json`, `littler`, `OBS_DOMAIN101`.
-   - Se asimilan **todas las estaciones que tengan datos** en la ventana (sin hold-out; el campo `rol` de `config/estaciones.json` ya no se usa en la ejecución diaria).
+   - Por defecto se asimilan **todas las estaciones que tengan datos** en la ventana. Con `--holdout` se excluyen las de `rol=evaluacion` (verificación independiente); los timers de tesis lo usan.
    - Si la cobertura en la ventana no alcanza los umbrales (`OBS_MIN_REGISTROS=60`, `OBS_MIN_ESTACIONES=3`), se bloquea con estado `SIN_OBS` salvo `--continue-sin-obs`. Sin ningún registro en la ventana se bloquea siempre.
-2. **GFS:** verifica los horarios `f000..f<run_hours>` cada 3 h del ciclo y los descarga.
+2. **GFS:** verifica los horarios `f000..f<run_hours>` cada 3 h del ciclo y los descarga (`GFS_RES=0p50` por defecto, ~2–3 GB por ciclo). Tras generar `met_em` el GFS se purga salvo `KEEP_GFS=1`.
 3. **WPS:** `run_wps_diario.sh` (geogrid solo si falta `geo_em`) → `met_em` → copia al run dir WRF.
 4. **Namelist diario:** `start=<fecha> <ciclo>Z`, `run_hours`, `obs_nudge_opt=1`, `fdda_end=asim_hours*60`.
 5. **Preflight** (bloqueante, sección 2.2) → **real.exe** → **wrf.exe nudged** (reintentos 5). El chequeo **2.2.7** bloquea la corrida si hay observaciones fuera de `[start, t0]` o si `fdda_end` no coincide con la ventana de asimilación.
@@ -125,14 +125,54 @@ python -I -m pytest tests/
 
 Cubren el cálculo de la ventana, el filtrado de observaciones y el preflight 2.2.7. No ejecutan WRF ni usan la red.
 
-## Automatización (etapa 2)
+## Cuatro ciclos diarios (00/06/12/18 UTC)
 
-Los archivos `deploy/systemd/wrf-diario.{service,timer}` están listos pero **no instalados**. Para activarlos:
+Cada ciclo arranca en el GFS de su hora, asimila 12 h hasta `t0` y pronostica libre el resto
+del día objetivo local (siempre el día siguiente a la fecha del ciclo):
 
 ```bash
-sudo cp deploy/systemd/wrf-diario.* /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now wrf-diario.timer
+./scripts/run_ciclo.sh 12       # ciclo 12Z: t0 00Z del día siguiente, objetivo día+1
+./scripts/run_ciclo.sh 18       # ciclo 18Z: t0 06Z del día siguiente, objetivo día+1
 ```
 
-El timer dispara a las **19:30 UTC** diarias y `Persistent=true` recupera corridas perdidas al volver el equipo. El servicio no recibe fecha: `run_diario.sh` usa **hoy UTC** (`date -u`); para forzar otra fecha, ejecutalo a mano con `--fecha YYYY-MM-DD`.
+`run_ciclo.sh` deduce la fecha GFS (si el ciclo aún no ocurrió hoy, usa ayer), pasa
+`--dia-objetivo fecha+1`, `--asim-hours 12` y `--holdout`.
+
+Timers systemd (no instalados por defecto):
+
+```bash
+sudo cp deploy/systemd/wrf-diario@.service deploy/systemd/wrf-diario-ciclo-*.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now wrf-diario-ciclo-00.timer wrf-diario-ciclo-06.timer \
+    wrf-diario-ciclo-12.timer wrf-diario-ciclo-18.timer
+```
+
+Disparan a las 13:30, 19:30, 01:30 y 07:30 UTC (1,5 h después de cada `t0`). `Persistent=true`
+recupera corridas perdidas. El timer viejo `wrf-diario.timer` (una corrida diaria a las 19:30)
+queda como alternativa manual.
+
+## Verificación
+
+La verificación es **diferida**: las observaciones del día objetivo todavía no existen cuando
+termina la corrida. El verificador se ejecuta cuando el histórico EcoWitt ya cubre el período
+(día siguiente, D+2 en UTC) y usa el CSV `valores_pronostico_estaciones.csv` (`lead_h`, `fase`)
+contra las estaciones con `rol=evaluacion`:
+
+```bash
+python scripts/verificar_diario.py --caso outputs/2026-10-22_06z
+python scripts/verificar_diario.py --caso outputs/2026-10-21_12z --t0 2026-10-21_12:00:00
+python scripts/verificar_diario.py --caso outputs/2026-10-22_06z --sin-holdout
+```
+
+Escribe en `<caso>/verificacion/`:
+
+- `metricas.csv`: n, bias, MAE, RMSE y r por variable, plazo, estación y conjunto.
+- `resumen.json`: metadatos del caso y métricas globales.
+- `informe.md`: tablas globales, T2m por plazo, extremos SMN 00–12Z/12–00Z y lluvia
+  24 h (si hay cobertura ≥90 %), y líneas base de persistencia/climatología.
+- `extremos.csv`, `lluvia.csv` y `figuras/rmse_t2_por_lead.png`.
+
+Si el CSV no trae `lead_h` (corridas viejas), pasar `--t0`. Con `--t0` de una corrida
+previa al protocolo de spin-up se verifica el pronóstico completo desde el inicio. La
+climatología requiere al menos 3 días de histórico previo en `data/raw`; si no está,
+se omite.

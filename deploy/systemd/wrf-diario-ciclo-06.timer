@@ -1,0 +1,11 @@
+[Unit]
+Description=Dispara el ciclo WRF 06Z (t0 18Z, objetivo día local siguiente)
+
+[Timer]
+# 19:30 UTC = 16:30 ART: 1,5 h después de t0 (18Z).
+OnCalendar=*-*-* 19:30:00 UTC
+Persistent=true
+Unit=wrf-diario@06.service
+
+[Install]
+WantedBy=timers.target

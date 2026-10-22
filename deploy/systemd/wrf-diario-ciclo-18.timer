@@ -1,0 +1,12 @@
+[Unit]
+Description=Dispara el ciclo WRF 18Z (t0 06Z del día siguiente, objetivo día local siguiente)
+
+[Timer]
+# 07:30 UTC = 04:30 ART: 1,5 h después de t0 (06Z del día siguiente).
+# run_ciclo.sh detecta que el ciclo es de la fecha anterior.
+OnCalendar=*-*-* 07:30:00 UTC
+Persistent=true
+Unit=wrf-diario@18.service
+
+[Install]
+WantedBy=timers.target

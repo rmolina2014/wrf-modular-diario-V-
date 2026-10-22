@@ -11,11 +11,13 @@ logger = logging.getLogger("ingesta.gfs")
 
 
 class GFSDownloader:
-    """Descargador de archivos GRIB2 GFS 0.25 grados para inicialización WPS."""
+    """Descargador de archivos GRIB2 GFS para inicialización WPS."""
 
-    def __init__(self, output_dir: str = "data/gfs"):
+    def __init__(self, output_dir: str = "data/gfs", res: str = "0p50"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        # 0p50 (~150 MB/archivo) para los ciclos diarios; 0p25 (~500 MB) para sensibilidad.
+        self.res = res
 
     def descargar_ciclo(
         self,
@@ -34,7 +36,7 @@ class GFSDownloader:
 
         for fhour in horas_pronostico:
             fstr = f"{fhour:03d}"
-            filename = f"gfs.t{ciclo_hora}z.pgrb2.0p25.f{fstr}"
+            filename = f"gfs.t{ciclo_hora}z.pgrb2.{self.res}.f{fstr}"
             dst_path = self.output_dir / filename
 
             if dst_path.exists() and dst_path.stat().st_size > 10_000_000:
@@ -43,9 +45,9 @@ class GFSDownloader:
                 continue
 
             if fuente == "aws":
-                url = f"https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{fecha_nodash}/{ciclo_hora}/atmos/gfs.t{ciclo_hora}z.pgrb2.0p25.f{fstr}"
+                url = f"https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{fecha_nodash}/{ciclo_hora}/atmos/{filename}"
             else:
-                url = f"https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{fecha_nodash}/{ciclo_hora}/atmos/gfs.t{ciclo_hora}z.pgrb2.0p25.f{fstr}"
+                url = f"https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.{fecha_nodash}/{ciclo_hora}/atmos/{filename}"
 
             logger.info(f"Descargando {filename} desde {fuente.upper()}...")
             try:

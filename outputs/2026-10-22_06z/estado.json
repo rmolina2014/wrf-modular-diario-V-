@@ -1,0 +1,22 @@
+{
+  "fecha": "2026-10-22",
+  "ciclo": "06",
+  "run_hours": 45,
+  "t0": "2026-10-22 18:00",
+  "asim_hours": 12,
+  "horizon_h": 33,
+  "dia_objetivo_local": "2026-10-23",
+  "estado": "EJECUTADO",
+  "detalle": "asimilación 12 h hasta t0 + pronóstico libre 33 h (obs_nudge_opt=1)",
+  "obs_nudge_opt": 1,
+  "fuente_gfs": "aws",
+  "obs_dia": 1247,
+  "obs_ventana": 995,
+  "obs_estaciones": 8,
+  "obs_ventana_asim": 995,
+  "obs_estaciones_asim": 8,
+  "holdout": false,
+  "n_wrfout": 46,
+  "ts_inicio": "2026-10-23T11:08:12",
+  "ts_fin": "2026-10-23T11:34:26"
+}

@@ -21,7 +21,8 @@ PATRON_CASO = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}z$")
 ARCHIVO_ESTACIONES = "valores_pronostico_estaciones.csv"
 ARCHIVO_DOMINIO = "valores_pronostico_dominio.csv"
 
-FASES = {"asimilacion": "Asimilación", "pronostico_libre": "Pronóstico libre"}
+FASES = {"asimilacion": "Asimilación", "pronostico_libre": "Pronóstico libre", "sin_dato": "-"}
+HUSO_LOCAL_H = -3  # San Juan; solo para CSV viejos que no traen la hora local
 
 COLUMNAS_ESTACION = {
     "t2_c": "T2 (°C)",
@@ -70,13 +71,22 @@ def cargar_valores(caso_dir: Path, tipo: str = "estaciones") -> Optional[pd.Data
     if not ruta.exists():
         return None
     df = pd.read_csv(ruta)
-    df["hora_local"] = pd.to_datetime(df["fecha_hora_local"], format=FMT_TIEMPO, errors="coerce")
+    if "fecha_hora_utc" not in df.columns:
+        return None
     df["hora_utc"] = pd.to_datetime(df["fecha_hora_utc"], format=FMT_TIEMPO, errors="coerce")
+    # Los CSV de corridas anteriores al protocolo de asimilación no traen hora local ni fase.
+    if "fecha_hora_local" in df.columns:
+        df["hora_local"] = pd.to_datetime(df["fecha_hora_local"], format=FMT_TIEMPO, errors="coerce")
+    else:
+        df["hora_local"] = df["hora_utc"] + pd.Timedelta(hours=HUSO_LOCAL_H)
+    if "fase" not in df.columns:
+        df["fase"] = "sin_dato"
     if tipo == "estaciones":
         df = df.sort_values(["estacion", "hora_utc"]).reset_index(drop=True)
-        # La lluvia del CSV es acumulada desde el inicio del modelo; la de 1 h es su diferencia.
-        dif = df.groupby("estacion")["lluvia_acum_mm"].diff()
-        df["lluvia_hora_mm"] = dif.fillna(df["lluvia_acum_mm"]).clip(lower=0).round(2)
+        if "lluvia_acum_mm" in df.columns:
+            # La lluvia del CSV es acumulada desde el inicio del modelo; la de 1 h es su diferencia.
+            dif = df.groupby("estacion")["lluvia_acum_mm"].diff()
+            df["lluvia_hora_mm"] = dif.fillna(df["lluvia_acum_mm"]).clip(lower=0).round(2)
     else:
         df = df.sort_values("hora_utc").reset_index(drop=True)
     return df

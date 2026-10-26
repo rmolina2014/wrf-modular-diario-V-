@@ -60,6 +60,22 @@ def test_filtrar_por_estacion_y_dia(tmp_path):
     assert valores.estaciones_disponibles(df) == ["A", "B"]
 
 
+def test_csv_viejo_sin_hora_local_ni_fase_ni_lluvia(tmp_path):
+    caso = tmp_path / "outputs" / "2026-10-21_12z"
+    caso.mkdir(parents=True)
+    (caso / "valores_pronostico_estaciones.csv").write_text(
+        "fecha_hora_utc,estacion,lat,lon,t2_c,rh_pct,psfc_hpa,viento_kmh,direccion_grados\n"
+        "2026-10-21_12:00:00,A,-31.5,-68.5,12.4,24.3,815.6,4.6,165.0\n"
+        "2026-10-21_13:00:00,A,-31.5,-68.5,15.6,30.8,815.7,10.9,208.0\n")
+    df = valores.cargar_valores(caso)
+    assert df["hora_local"].dt.strftime("%H:%M").tolist() == ["09:00", "10:00"]
+    tabla = valores.tabla_presentacion(valores.filtrar(df, "A"))
+    assert "Lluvia acum. (mm)" not in tabla.columns and "T2 (°C)" in tabla.columns
+    assert tabla["Fase"].tolist() == ["-", "-"]
+    pagina = html_tabla.construir_indice_html(caso, [])  # no debe fallar sin estado.json
+    assert "<table" in pagina
+
+
 def test_cargar_valores_inexistente_devuelve_none(tmp_path):
     assert valores.cargar_valores(tmp_path, "dominio") is None
 

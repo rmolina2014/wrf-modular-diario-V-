@@ -89,6 +89,11 @@ PASO_HORAS = 3
 # --- Umbrales de cobertura observacional ---
 OBS_MIN_REGISTROS = int(os.environ.get("OBS_MIN_REGISTROS", "60"))
 OBS_MIN_ESTACIONES = int(os.environ.get("OBS_MIN_ESTACIONES", "3"))
+# Una estación solo se asimila si aporta datos suficientes en la ventana [start, t0]:
+# al menos OBS_MIN_COBERTURA_ESTACION (fracción) de los registros esperables con la
+# cadencia de EcoWitt (OBS_CADENCIA_MIN minutos). Las que no llegan se excluyen.
+OBS_CADENCIA_MIN = int(os.environ.get("OBS_CADENCIA_MIN", "5"))
+OBS_MIN_COBERTURA_ESTACION = float(os.environ.get("OBS_MIN_COBERTURA_ESTACION", "0.5"))
 
 GFS_URLS = {
     "aws": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{fecha}/{ciclo}/atmos/{file}",
@@ -298,6 +303,34 @@ def cobertura_obs(csv_path: Path, start: datetime, t0: datetime,
             "por_estacion": por_estacion,
             "ventana_asim": int(len(asim)), "estaciones_asim": len(por_estacion_asim),
             "por_estacion_asim": por_estacion_asim}
+
+
+def seleccionar_estaciones(por_estacion: Dict[str, int], start: datetime, t0: datetime,
+                           candidatas: Optional[set] = None) -> Tuple[set, Dict[str, int], int]:
+    """Decide qué estaciones aportan datos suficientes para asimilarse.
+
+    ``por_estacion`` son los registros válidos de cada estación en [start, t0]. Una estación
+    entra solo si llega a ``OBS_MIN_COBERTURA_ESTACION`` de los registros esperables
+    (ventana / ``OBS_CADENCIA_MIN``). ``candidatas`` (catálogo, o catálogo sin las de
+    evaluación con hold-out) permite informar también las que no trajeron ningún dato.
+
+    Devuelve (estaciones a asimilar, {estación excluida: registros en la ventana},
+    mínimo de registros exigido por estación).
+    """
+    esperados = max(1, int((t0 - start).total_seconds() // 60) // max(1, OBS_CADENCIA_MIN))
+    minimo = max(1, math.ceil(OBS_MIN_COBERTURA_ESTACION * esperados))
+    validas = {e for e, n in por_estacion.items() if n >= minimo}
+    todas = set(por_estacion) | set(candidatas or ())
+    excluidas = {e: int(por_estacion.get(e, 0)) for e in sorted(todas - validas)}
+    return validas, excluidas, minimo
+
+
+def _nombres_catalogo() -> set:
+    try:
+        return set(json.loads(ESTACIONES_JSON.read_text(encoding="utf-8")))
+    except Exception as e:
+        logger.warning(f"No se pudo leer {ESTACIONES_JSON.name}: {e}")
+        return set()
 
 
 def _estaciones_asimilables() -> Optional[set]:
@@ -687,6 +720,11 @@ def escribir_informe(caso_dir: Path, estado: Dict[str, Any], sufijo: str = ""):
              f"**{estado.get('obs_estaciones', 0)}** estaciones",
              f"- Asimiladas en OBS_DOMAIN101: **{estado.get('obs_ventana_asim', 0)}** registros en "
              f"**{estado.get('obs_estaciones_asim', 0)}** estaciones",
+             f"- Estaciones asimiladas: {', '.join(estado.get('estaciones_asimiladas') or []) or 'ninguna'}",
+             "- Estaciones NO asimiladas (registros en la ventana, mínimo "
+             f"{estado.get('min_registros_estacion', 0)}): "
+             + (", ".join(f"{e} ({n})" for e, n in (estado.get('estaciones_excluidas') or {}).items())
+                or "ninguna"),
              "",
              f"## Resultados",
              f"`{caso_dir}`",
@@ -822,6 +860,7 @@ def _pipeline(args) -> int:
         "estado": "EJECUTANDO", "detalle": "", "obs_nudge_opt": 1,
         "fuente_gfs": "-", "obs_dia": 0, "obs_ventana": 0, "obs_estaciones": 0,
         "obs_ventana_asim": 0, "obs_estaciones_asim": 0, "holdout": bool(args.holdout),
+        "estaciones_asimiladas": [], "estaciones_excluidas": {}, "min_registros_estacion": 0,
         "n_wrfout": 0, "ts_inicio": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -830,6 +869,17 @@ def _pipeline(args) -> int:
         csv = obtener_obs_ventana(start_dt, t0, args.force)
         asimilables = _estaciones_asimilables() if args.holdout else None
         cov = cobertura_obs(csv, start_dt, t0, asimilables=asimilables)
+        # Solo se asimilan las estaciones que aportan datos suficientes en la ventana.
+        validas, excluidas, min_reg_est = seleccionar_estaciones(
+            cov["por_estacion_asim"], start_dt, t0,
+            candidatas=asimilables if asimilables is not None else _nombres_catalogo())
+        cov = cobertura_obs(csv, start_dt, t0, asimilables=validas)
+        estado.update(estaciones_asimiladas=sorted(validas), estaciones_excluidas=excluidas,
+                      min_registros_estacion=min_reg_est)
+        if excluidas:
+            logger.warning(f"Estaciones NO asimiladas por falta de datos (mínimo {min_reg_est} registros "
+                           f"en la ventana): " + ", ".join(f"{e} ({n})" for e, n in excluidas.items()))
+        logger.info(f"Estaciones a asimilar ({len(validas)}): {', '.join(sorted(validas)) or 'ninguna'}")
         estado.update(obs_dia=cov["dia"], obs_ventana=cov["ventana"], obs_estaciones=cov["estaciones"],
                       obs_ventana_asim=cov["ventana_asim"], obs_estaciones_asim=cov["estaciones_asim"])
     except Exception as e:
@@ -873,6 +923,8 @@ def _pipeline(args) -> int:
     # ---- 2. QC + Little_R + OBS_DOMAIN101 ----
     try:
         df = generar_dataframe_validado(csv, start_dt, t0)
+        # Las estaciones sin datos suficientes no llegan a obs_flat, Little_R ni OBS_DOMAIN101.
+        df = df[df["estacion"].isin(validas)].reset_index(drop=True)
         if df.empty:
             det = (f"sin observaciones válidas dentro de la ventana de asimilación "
                    f"[{start_dt:%Y-%m-%d %H:%M}, {t0:%Y-%m-%d %H:%M}] UTC.")

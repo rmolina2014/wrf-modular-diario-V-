@@ -103,7 +103,8 @@ La corrida necesita las observaciones hasta **t0 (18Z con los defaults)**, así 
 ## Flujo del orquestador (`pipeline_diario.py`)
 
 1. **Observaciones:** histórico EcoWitt de la ventana `[start, t0]` → QC → `obs_flat.json`, `littler`, `OBS_DOMAIN101`.
-   - Por defecto se asimilan **todas las estaciones que tengan datos** en la ventana. Con `--holdout` se excluyen las de `rol=evaluacion` (verificación independiente); los timers de tesis lo usan.
+   - Solo se asimilan las estaciones que **aportan datos suficientes** en la ventana `[start, t0]`: al menos el 50 % de los registros esperables (`OBS_MIN_COBERTURA_ESTACION=0.5`, cadencia `OBS_CADENCIA_MIN=5` min; 72 de 144 con 12 h). Las que no llegan (o no traen ningún dato) quedan fuera de `obs_flat.json`, Little_R y `OBS_DOMAIN101`, y se listan en el log, en `estado.json` (`estaciones_excluidas`) y en `informe.md`.
+   - Entre las que sí aportan datos se asimilan **todas**. Con `--holdout` se excluyen las de `rol=evaluacion` (verificación independiente); los timers de tesis lo usan.
    - Si la cobertura en la ventana no alcanza los umbrales (`OBS_MIN_REGISTROS=60`, `OBS_MIN_ESTACIONES=3`), se bloquea con estado `SIN_OBS` salvo `--continue-sin-obs`. Sin ningún registro en la ventana se bloquea siempre.
 2. **GFS:** verifica los horarios `f000..f<run_hours>` cada 3 h del ciclo y los descarga (`GFS_RES=0p50` por defecto, ~2–3 GB por ciclo). Tras generar `met_em` el GFS se purga salvo `KEEP_GFS=1`.
 3. **WPS:** `run_wps_diario.sh` (geogrid solo si falta `geo_em`) → `met_em` → copia al run dir WRF.

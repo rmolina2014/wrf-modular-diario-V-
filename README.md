@@ -152,6 +152,24 @@ Disparan a las 13:30, 19:30, 01:30 y 07:30 UTC (1,5 h después de cada `t0`). `P
 recupera corridas perdidas. El timer viejo `wrf-diario.timer` (una corrida diaria a las 19:30)
 queda como alternativa manual.
 
+## Interfaz gráfica
+
+**App web (Streamlit)** — inicia corridas y muestra los resultados:
+
+```
+pip install streamlit        # si el entorno no lo tiene
+streamlit run app/streamlit_app.py
+```
+
+- **Barra lateral:** fecha, ciclo (00/06/12/18), horas de asimilación, hold-out, dry-run y «continuar sin observaciones». La corrida se lanza con `run_diario.sh` como proceso desacoplado (sigue aunque se cierre la pestaña) y se bloquea si ya hay otra en curso (`logs/corrida.lock`). Las opciones se validan; nunca se pasa texto libre al shell.
+- **Pronóstico:** tabla con una fila por hora local y una columna por variable (T2, HR, PSFC, viento, dirección, lluvia 1 h y acumulada), por estación o resumen del dominio, con filtro del día objetivo y descarga a CSV. Las filas de asimilación van en gris y los valores fuera de rango físico (p. ej. viento > 150 km/h) en rojo.
+- **Estado y log:** estado del ciclo, estaciones asimiladas/excluidas y cola del log (se refresca sola cada 10 s).
+- **Mapas:** los PNG del ciclo.
+
+Por defecto escucha en `localhost`. Para abrirla a otras máquinas hay que agregar autenticación antes: lanzar una corrida usa la CPU del servidor durante ~25 min.
+
+**Índice estático** — `outputs/<ciclo>/productos/indice.html` se genera solo en cada corrida: un archivo autocontenido con la misma tabla (lista desplegable de estaciones) y los mapas. No necesita servidor: se abre en el navegador. GitHub muestra el código del `.html`, no la página; para verlo hay que descargarlo o publicarlo con GitHub Pages.
+
 ## Verificación
 
 La verificación es **diferida**: las observaciones del día objetivo todavía no existen cuando

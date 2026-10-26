@@ -215,12 +215,19 @@ def principal():
         ds.close()
         print(f"-> {dest}  (obs: {len(obs)})")
 
-    (out / "indice.html").write_text(
-        "<html><head><meta charset='utf-8'></head><body style='font-family:sans-serif'>"
-        "<h1>Productos WRF - San Juan (pronóstico diario)</h1><ul>"
-        + "".join(f"<li><a href='{p.name}'><img src='{p.name}' width='320'></a></li>"
-                  for p in sorted(out.glob("producto_*.png")))
-        + "</ul></body></html>", encoding="utf-8")
+    imagenes = sorted(out.glob("producto_*.png"))
+    try:
+        # Índice con la tabla por hora/variable (lee los CSV del ciclo, que viven junto a productos/).
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from src.ui.html_tabla import construir_indice_html
+        pagina = construir_indice_html(out.resolve().parent, imagenes)
+    except Exception as e:  # el índice nunca debe romper la generación de mapas
+        print(f"Aviso: índice con tabla no disponible ({e}); se escribe la galería simple.", file=sys.stderr)
+        pagina = ("<html><head><meta charset='utf-8'></head><body style='font-family:sans-serif'>"
+                  "<h1>Productos WRF - San Juan (pronóstico diario)</h1><ul>"
+                  + "".join(f"<li><a href='{p.name}'><img src='{p.name}' width='320'></a></li>" for p in imagenes)
+                  + "</ul></body></html>")
+    (out / "indice.html").write_text(pagina, encoding="utf-8")
     print("Listo.")
     return 0
 

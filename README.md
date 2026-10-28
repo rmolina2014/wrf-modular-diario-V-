@@ -112,6 +112,9 @@ La corrida necesita las observaciones hasta **t0 (18Z con los defaults)**, así 
 5. **Preflight** (bloqueante, sección 2.2) → **real.exe** → **wrf.exe nudged** (reintentos 5). El chequeo **2.2.7** bloquea la corrida si hay observaciones fuera de `[start, t0]` o si `fdda_end` no coincide con la ventana de asimilación.
 6. **Producto:** CSV de valores + mapas T2/RH/PSFC/viento del día objetivo + `indice.html` + `informe_diario.md` + `estado.json`.
 
+- **Chequeo del apagado del nudging.** Tras `wrf.exe` se lee `wrf_nudged.log` (queda copiado en `<caso>/logs/`): WRF imprime una línea `CALL IN4DOB ... XTIME = x` en cada paso mientras el nudging está activo. Si la última aparece después de `fdda_end` (+ un paso de tiempo), `estado.json` marca `nudging_estado = VIOLADO` y el informe lo advierte. `OK` = el nudging se apagó en t0; `SIN_DIAGNOSTICO` = no hay líneas (revisar `obs_ipf_in4dob = .true.`). Es evidencia indirecta; la prueba definitiva es reiniciar desde un `wrfrst` en t0 con `obs_nudge_opt = 0` y comparar. Para corridas ya hechas: `python scripts/verificar_nudging.py --caso outputs/<ciclo>`.
+- El apagado en `fdda_end` es un corte en escalón: no se usa `obs_idynin`/`obs_dtramp` (rampa de apagado), que dejaría el nudging activo, atenuado, después de t0.
+
 ## Estados posibles (`estado.json`)
 
 `EJECUTADO`, `DRY_RUN`, `PREPARADO`, `SIN_OBS` (bloqueado), `SIN_GFS` (bloqueado), `BLOQUEADO` (preflight o corrida concurrente), `FALLIDO`.

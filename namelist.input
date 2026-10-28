@@ -96,7 +96,7 @@
  obs_ipf_in4dob                      = .true.,
  max_obs                             = 10000,
  obs_prt_max                         = 100,
-  fdda_end                            = 2160,
+  fdda_end                            = 720,
   gfdda_inname                        = "wrffdda_d<domain>",
  gfdda_interval_m                    = 360,
  gfdda_end_h                         = 12,

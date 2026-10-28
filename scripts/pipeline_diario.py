@@ -726,6 +726,12 @@ def escribir_informe(caso_dir: Path, estado: Dict[str, Any], sufijo: str = ""):
              + (", ".join(f"{e} ({n})" for e, n in (estado.get('estaciones_excluidas') or {}).items())
                 or "ninguna"),
              "",
+             "## Nudging",
+             "",
+             f"- Apagado en t0 (fdda_end = {estado.get('nudging_fdda_end_min', '-')} min): "
+             f"**{estado.get('nudging_estado', '-')}**",
+             f"- Última llamada a IN4DOB: XTIME = {estado.get('nudging_ultimo_xtime_min', '-')} min",
+             "",
              f"## Resultados",
              f"`{caso_dir}`",
              ""]
@@ -861,6 +867,7 @@ def _pipeline(args) -> int:
         "fuente_gfs": "-", "obs_dia": 0, "obs_ventana": 0, "obs_estaciones": 0,
         "obs_ventana_asim": 0, "obs_estaciones_asim": 0, "holdout": bool(args.holdout),
         "estaciones_asimiladas": [], "estaciones_excluidas": {}, "min_registros_estacion": 0,
+        "nudging_estado": "-", "nudging_ultimo_xtime_min": None, "nudging_fdda_end_min": None,
         "n_wrfout": 0, "ts_inicio": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -1043,6 +1050,23 @@ def _pipeline(args) -> int:
         return 1
     estado["n_wrfout"] = n_wrfout
 
+    # ---- 7b. Chequeo: el nudging debe haberse apagado en fdda_end (= t0) ----
+    from src.modelo.nudging_check import analizar_log, VIOLADO, SIN_DIAGNOSTICO
+
+    log_wrf = RUN_DIR / "wrf_nudged.log"
+    (caso_dir / "logs").mkdir(parents=True, exist_ok=True)
+    if log_wrf.exists():
+        shutil.copy2(log_wrf, caso_dir / "logs" / "wrf_nudged.log")  # queda junto al caso, re-verificable
+    chk = analizar_log(log_wrf, vent["asim_hours"] * 60, esperaba_nudging=obs_nudge_opt == 1)
+    estado.update(nudging_estado=chk["estado"], nudging_ultimo_xtime_min=chk["ultimo_xtime_min"],
+                  nudging_fdda_end_min=chk["fdda_end_min"])
+    if chk["estado"] == VIOLADO:
+        logger.error(f"NUDGING: {chk['detalle']} La separación asimilación/pronóstico libre NO es limpia.")
+    elif chk["estado"] == SIN_DIAGNOSTICO:
+        logger.warning(f"NUDGING: {chk['detalle']}")
+    else:
+        logger.info(f"NUDGING: {chk['estado']} - {chk['detalle']}")
+
     # ---- 8. Producto de pronóstico ----
     # CSV con los valores del pronóstico; cada fila va marcada como asimilación o pronóstico libre.
     rc_v, det_v = extraer_valores(nudged_dir, caso_dir, t0)
@@ -1059,6 +1083,8 @@ def _pipeline(args) -> int:
     estado["estado"] = "EJECUTADO"
     estado["detalle"] = (f"asimilación {vent['asim_hours']} h hasta t0 + pronóstico libre "
                          f"{vent['horizon_h']} h (obs_nudge_opt={obs_nudge_opt})")
+    if estado.get("nudging_estado") == VIOLADO:
+        estado["detalle"] += " | ADVERTENCIA: el nudging actuó después de t0 (ver sección Nudging)."
     estado["ts_fin"] = datetime.now().isoformat(timespec="seconds")
     escribir_informe(caso_dir, estado)
     logger.info(f"Pronóstico diario completo: {caso_dir}")

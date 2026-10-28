@@ -174,6 +174,15 @@ def vista_estado() -> None:
             c[3].metric("Estaciones asimiladas", e.get("obs_estaciones_asim", "-"))
             if e.get("detalle"):
                 st.caption(e["detalle"])
+            if e.get("nudging_estado") == "VIOLADO":
+                st.error("El nudging siguió actuando después de t0: el pronóstico libre no es independiente de las "
+                         f"observaciones (última llamada en XTIME {e.get('nudging_ultimo_xtime_min')} min, "
+                         f"fdda_end {e.get('nudging_fdda_end_min')} min).")
+            elif e.get("nudging_estado") == "OK":
+                st.caption(f"Nudging apagado en t0: último paso con nudging en XTIME "
+                           f"{e.get('nudging_ultimo_xtime_min')} min (fdda_end {e.get('nudging_fdda_end_min'):g} min).")
+            elif e.get("nudging_estado") == "SIN_DIAGNOSTICO":
+                st.warning("No se pudo comprobar el apagado del nudging (el log no trae líneas de IN4DOB).")
             if e.get("estaciones_excluidas"):
                 st.warning("No asimiladas por falta de datos (registros en la ventana): "
                            + ", ".join(f"{k} ({v})" for k, v in e["estaciones_excluidas"].items()))

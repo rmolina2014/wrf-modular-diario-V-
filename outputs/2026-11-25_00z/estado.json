@@ -1,0 +1,35 @@
+{
+  "fecha": "2026-11-25",
+  "ciclo": "00",
+  "run_hours": 51,
+  "t0": "2026-11-25 12:00",
+  "asim_hours": 12,
+  "horizon_h": 39,
+  "dia_objetivo_local": "2026-11-26",
+  "estado": "FALLIDO",
+  "detalle": "met_em incompletos: 7/18 archivos propagados al run dir",
+  "obs_nudge_opt": 1,
+  "fuente_gfs": "aws",
+  "obs_dia": 3085,
+  "obs_ventana": 915,
+  "obs_estaciones": 8,
+  "obs_ventana_asim": 580,
+  "obs_estaciones_asim": 4,
+  "holdout": true,
+  "estaciones_asimiladas": [
+    "CUESTA_Viento",
+    "ECOHUMUS",
+    "PUNTA_NEGRA",
+    "VALLE_FERTIL"
+  ],
+  "estaciones_excluidas": {
+    "INTA_POCITO": 4,
+    "LOS_PIONEROS": 0
+  },
+  "min_registros_estacion": 72,
+  "nudging_estado": "-",
+  "nudging_ultimo_xtime_min": null,
+  "nudging_fdda_end_min": null,
+  "n_wrfout": 0,
+  "ts_inicio": "2026-11-25T17:40:02"
+}

@@ -1,0 +1,35 @@
+{
+  "fecha": "2026-11-18",
+  "ciclo": "06",
+  "run_hours": 45,
+  "t0": "2026-11-18 18:00",
+  "asim_hours": 12,
+  "horizon_h": 33,
+  "dia_objetivo_local": "2026-11-19",
+  "estado": "FALLIDO",
+  "detalle": "wrf.exe nudged falló",
+  "obs_nudge_opt": 1,
+  "fuente_gfs": "aws",
+  "obs_dia": 1905,
+  "obs_ventana": 998,
+  "obs_estaciones": 8,
+  "obs_ventana_asim": 996,
+  "obs_estaciones_asim": 7,
+  "holdout": false,
+  "estaciones_asimiladas": [
+    "CARACOLES",
+    "CUESTA_Viento",
+    "ECOHUMUS",
+    "INTA_SANMARTIN",
+    "PUNTA_NEGRA",
+    "ULLUM_EMBALSE",
+    "VALLE_FERTIL"
+  ],
+  "estaciones_excluidas": {
+    "INTA_POCITO": 2,
+    "LOS_PIONEROS": 0
+  },
+  "min_registros_estacion": 72,
+  "n_wrfout": 0,
+  "ts_inicio": "2026-11-19T18:18:06"
+}

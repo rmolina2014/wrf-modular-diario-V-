@@ -1,0 +1,60 @@
+{
+  "fechaconsulta": "2026-11-19 17:25:02",
+  "fechadatos": "2026-11-20",
+  "estaciones": {
+    "INTA_POCITO": {
+      "mac": "30:83:98:A7:43:1B",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "ULLUM_EMBALSE": {
+      "mac": "30:83:98:A5:CB:17",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "ECOHUMUS": {
+      "mac": "BC:FF:4D:F7:DF:DA",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "PUNTA_NEGRA": {
+      "mac": "30:83:98:A6:BB:72",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "INTA_SANMARTIN": {
+      "mac": "30:83:98:A6:B3:AA",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "VALLE_FERTIL": {
+      "mac": "30:83:98:A7:1E:10",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "LOS_PIONEROS": {
+      "mac": "30:83:98:A7:09:CD",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "CUESTA_Viento": {
+      "mac": "30:83:98:A5:52:40",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    },
+    "CARACOLES": {
+      "mac": "30:83:98:A7:47:39",
+      "registros_validos": 0,
+      "registros_total": 0,
+      "error": "Sin datos"
+    }
+  }
+}

@@ -128,7 +128,7 @@ def _aplicar_climatologia(df: pd.DataFrame, clima: pd.DataFrame) -> pd.DataFrame
 def _extremos_ventana(m: pd.DataFrame, o: pd.DataFrame, ini: datetime,
                      fin: datetime, fecha, ventana: str):
     """Tmin/Tmax de una ventana si modelo y obs cubren ≥90 % de las horas."""
-    esperadas = list(pd.date_range(pd.Timestamp(ini), pd.Timestamp(fin), freq="h", closed="left"))
+    esperadas = list(pd.date_range(pd.Timestamp(ini), pd.Timestamp(fin), freq="h", inclusive="left"))
     if not esperadas:
         return None
     horas_obs = set(o["ts"].dt.floor("h"))
